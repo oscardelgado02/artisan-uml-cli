@@ -21,7 +21,7 @@ plugins required.
 
 ## Why
 
-The editor, [`artisan-uml`](https://www.npmjs.com/package/artisan-uml), makes designing
+The editor, [`artisan-uml`](https://github.com/oscardelgado02/artisan-uml), makes designing
 architecture fluid. This CLI plugs it into the loop you actually work in: an agentic
 coding workflow. One command scans your C# into the editor; another reads your diagram
 edits and refactors the code — detecting **renames** (not delete-then-recreate),
@@ -31,7 +31,8 @@ write on classes, members or the project become instructions agents honor.
 ## Quick start
 
 ```bash
-npm install -g artisan-uml-cli
+pnpm install -g artisan-uml-cli
+# or: npm install -g artisan-uml-cli
 
 cd your-unity-project
 artisan scan
@@ -41,6 +42,20 @@ Then open **`.artisan/diagram.html`** — the editor as one self-contained file,
 server needed. Click **Connect file** once so your edits autosave to
 `.artisan/diagram.json`. The bundled editor is the published
 [`artisan-uml`](https://www.npmjs.com/package/artisan-uml) package, inlined into the file.
+
+### `editor` or `serve`?
+
+Two ways to run the same editor:
+
+| | `artisan editor` | `artisan serve` |
+| --- | --- | --- |
+| What runs | nothing — writes `diagram.html`, opens it | localhost HTTP server (`:4173`) |
+| Autosave | browser File System Access API (**Connect file**, one click) | `PUT /api/diagram` over localhost |
+| Extra | none | pending-changes API (`GET /api/pending`, `POST /api/ack`) |
+| Browser | Chrome, Edge | any browser, incl. Firefox / Safari |
+
+On Chrome/Edge, `editor` is all you need; `serve` is the fallback for browsers
+without the file-handle API, or when you want the pending API.
 
 ### With your coding agent
 
@@ -78,7 +93,13 @@ and run `artisan mark-ai`.
 | `artisan add node <Name> [--kind ...] [--x --y] [--note]` | Add a class box from the terminal (auto-placed unless positioned) |
 | `artisan add member <Class> <attribute\|method\|value> <Name> [--type --params --vis --mods --note]` | Add members to an existing class |
 | `artisan add edge <From> <To> [--kind --label --from-mult --to-mult]` | Add a relation between two classes |
+| `artisan edit node <Name> [--name --kind --x --y --note]` | Rename / re-kind / move / note a class (renames keep the id) |
+| `artisan edit member <Class> <Name> [--name --type --params --vis --mods --note]` | Update an existing member |
+| `artisan edit edge <From> <To> [--kind --new-kind --label --from-mult --to-mult]` | Update a relation (`--label-off` clears the label) |
+| `artisan remove node <Name>` | Delete a class (its relations cascade) |
+| `artisan remove member <Class> <Name> [--kind]` / `remove edge <From> <To> [--kind]` | Delete a member or relation |
 | `artisan editor` | Open the Artisan UML editor app (bundled from the `artisan-uml` package) — creates `.artisan/` with an empty diagram if none exists |
+| `artisan help [command]` | Overview or detailed help for one command |
 
 Scan skips `Library/`, `obj/`, `bin/`, `Temp/`, `Logs/`, `Packages/`, `Editor/` —
 Unity-aware out of the box.
@@ -150,6 +171,19 @@ pnpm install        # links the workspace/registry editor package
 pnpm test           # parser, diff engine, scan flow, layout checks
 node bin/artisan.mjs help
 ```
+
+## Documentation
+
+Full documentation lives in [`docs/`](docs/) and is hosted on GitHub Pages:
+**[Documentation](https://oscardelgado02.github.io/artisan-uml-cli/)** — getting
+started, the workflow, commands, the `.artisan/` directory, relations and agent
+packs.
+
+## Community
+
+- [Contributing](CONTRIBUTING.md) — dev setup, tests and PR expectations
+- [Code of Conduct](CODE_OF_CONDUCT.md) — Contributor Covenant
+- [Security](SECURITY.md) — how to report vulnerabilities privately
 
 ## License
 
