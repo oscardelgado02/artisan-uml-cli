@@ -1,0 +1,22 @@
+lockfileVersion: '9.0'
+
+settings:
+  autoInstallPeers: true
+  excludeLinksFromLockfile: false
+
+importers:
+
+  .:
+    dependencies:
+      artisan-uml:
+        specifier: ^1.0.0
+        version: 1.0.0
+
+packages:
+
+  artisan-uml@1.0.0:
+    resolution: {integrity: sha512-eMMRhE/0pRIJhWWSXH92p4tP83QroPmEmM9dx87qY+xYZImGqSjniwJ0LKRaWbGQOj/P1uMgev6DCaYbcm9O6g==}
+
+snapshots:
+
+  artisan-uml@1.0.0: {}

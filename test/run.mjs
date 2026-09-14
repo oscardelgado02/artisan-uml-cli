@@ -8,7 +8,7 @@ import process from 'node:process';
 import { parseCsFile } from '../lib/csharp.mjs';
 import { buildEdges, toPlantUML, layout, widthOf, heightOf, nameLines, rowParts } from '../lib/diagram.mjs';
 import { diffDiagram, pendingRefs, formatReport } from '../lib/diff.mjs';
-import { normalizeDiagram } from '../lib/store.mjs';
+import { normalizeDiagram, readJSON, writeJSON } from '../lib/store.mjs';
 import { runScan } from '../lib/scan.mjs';
 
 let passed = 0;
@@ -344,7 +344,74 @@ assert.equal(EDITOR.CONTRACT_VERSION, cliPkg.editorContract, 'editorContract pin
 assert.doesNotThrow(assertEditorContract, 'contract check passes');
 ok(`editor contract v${EDITOR.CONTRACT_VERSION} in sync (source: ${editorSource})`);
 
+// CLI add commands: node / member / edge mutations + persist side effects.
+const { runAdd } = await import('../lib/edit.mjs');
+const addRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'artisan-add-'));
+process.chdir(addRoot);
+fs.mkdirSync('.artisan', { recursive: true });
+const seed = { seq: 1, projectNotes: '', nodes: [{ id: 'n_dog', kind: 'class', name: 'Dog', x: 100, y: 100, attributes: [], methods: [] }], edges: [] };
+writeJSON('.artisan/diagram.json', seed);
+runAdd(['node', 'Collar', '--kind', 'interface']);
+runAdd(['node', 'Leash', '--x', '500', '--y', '300']);
+runAdd(['member', 'Dog', 'method', 'Bark', '--type', 'void', '--params', 'loud: bool']);
+runAdd(['member', 'Dog', 'attribute', 'Age', '--type', 'int', '--vis', '-']);
+runAdd(['edge', 'Dog', 'Collar', '--kind', 'composition', '--label', 'has']);
+const afterAdd = readJSON('.artisan/diagram.json');
+const dogAfter = afterAdd.nodes.find((n) => n.name === 'Dog');
+const collar = afterAdd.nodes.find((n) => n.name === 'Collar');
+const leash = afterAdd.nodes.find((n) => n.name === 'Leash');
+assert.equal(afterAdd.nodes.length, 3, 'add node');
+assert.equal(collar.kind, 'interface', 'node kind flag');
+assert.ok(collar.x != null && collar.y != null, 'unpositioned node auto-placed');
+assert.equal(leash.x, 500);
+assert.equal(leash.y, 300);
+assert.equal(dogAfter.methods.length, 1);
+assert.equal(dogAfter.methods[0].name, 'Bark');
+assert.equal(dogAfter.methods[0].params, 'loud: bool');
+assert.equal(dogAfter.attributes.length, 1);
+assert.equal(dogAfter.attributes[0].vis, '-');
+assert.equal(afterAdd.edges.length, 1);
+assert.equal(afterAdd.edges[0].kind, 'composition');
+assert.ok(fs.existsSync('.artisan/diagram.puml') && fs.readFileSync('.artisan/diagram.puml', 'utf8').includes('Collar'), 'puml refreshed after add');
+assert.throws(() => runAdd(['edge', 'Dog', 'Collar', '--kind', 'composition']), 'duplicate relation rejected');
+assert.throws(() => runAdd(['member', 'Dog', 'value', 'PUP']), 'value only on enums');
+ok('add node/member/edge: placed, persisted, puml + html refreshed, dedup + validation');
+
+// CLI edit/remove commands: update + delete with cascade, rename reports, disambiguation.
+const { runEdit, runRemove } = await import('../lib/edit.mjs');
+const dogId = seed.nodes[0].id;
+runEdit(['node', 'Dog', '--name', 'Wolf', '--note', 'howls at night']);
+runEdit(['node', 'Leash', '--x', '42', '--y', '7']);
+runEdit(['member', 'Wolf', 'Bark', '--params', 'loud: bool, times: int', '--vis', '#']);
+runEdit(['member', 'Wolf', 'Age', '--type', 'float']);
+runEdit(['edge', 'Wolf', 'Collar', '--kind', 'composition', '--label', 'wears']);
+runEdit(['edge', 'Wolf', 'Collar', '--kind', 'composition', '--label-off']);
+const afterEdit = readJSON('.artisan/diagram.json');
+const wolf = afterEdit.nodes.find((n) => n.name === 'Wolf');
+const leashEdit = afterEdit.nodes.find((n) => n.name === 'Leash');
+assert.equal(afterEdit.nodes.find((n) => n.id === dogId).name, 'Wolf', 'node rename keeps id');
+assert.equal(wolf.note, 'howls at night', 'node note set');
+assert.equal(leashEdit.x, 42);
+assert.equal(wolf.methods[0].params, 'loud: bool, times: int');
+assert.equal(wolf.methods[0].vis, '#');
+assert.equal(wolf.attributes[0].type, 'float');
+const compEdge = afterEdit.edges.find((e) => e.from === dogId || e.to === dogId);
+assert.equal(compEdge.label, '', 'edge label cleared via --label-off');
+runEdit(['edge', 'Wolf', 'Collar', '--kind', 'composition', '--label', 'has']);
+assert.throws(() => runEdit(['edge', 'Wolf', 'Unknown']), 'edit edge to unknown class throws');
+assert.throws(() => runRemove(['member', 'Wolf', 'Nope']), 'remove unknown member throws');
+runRemove(['member', 'Wolf', 'Age']);
+runRemove(['edge', 'Wolf', 'Collar']);
+runRemove(['node', 'Collar']);
+const afterRemove = readJSON('.artisan/diagram.json');
+assert.equal(afterRemove.nodes.length, 2, 'node removed');
+assert.equal(afterRemove.nodes.find((n) => n.id === dogId).attributes.length, 0, 'member removed');
+assert.equal(afterRemove.edges.length, 0, 'edges cascaded with removed node');
+assert.ok(fs.readFileSync('.artisan/diagram.puml', 'utf8').includes('Wolf'), 'puml refreshed after edit/remove');
+ok('edit/remove node/member/edge: rename keeps id, cascade, disambiguation, puml refreshed');
+
 process.chdir('/');
 fs.rmSync(tmp, { recursive: true, force: true });
+fs.rmSync(addRoot, { recursive: true, force: true });
 
 console.log(`\nAll ${passed} checks passed.`);
