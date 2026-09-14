@@ -19,14 +19,26 @@ plugins required.
 ![Node](https://img.shields.io/badge/node-%E2%89%A518-green)
 ![Deps](https://img.shields.io/badge/dependencies-zero-brightgreen)
 
-## Why
+## Why I built this
 
-The editor, [`artisan-uml`](https://github.com/oscardelgado02/artisan-uml), makes designing
-architecture fluid. This CLI plugs it into the loop you actually work in: an agentic
-coding workflow. One command scans your C# into the editor; another reads your diagram
-edits and refactors the code — detecting **renames** (not delete-then-recreate),
-scaffolding new classes, and never touching existing members without asking. Notes you
-write on classes, members or the project become instructions agents honor.
+I'm Óscar Delgado, a software engineer. I like to plan the architecture first and keep
+it visible as the codebase grows — that's why I built the
+[`artisan-uml`](https://github.com/oscardelgado02/artisan-uml) editor.
+
+Agentic coding workflows changed how fast we build, but they brought a new problem:
+agents happily create architecture on their own — new classes, new abstractions,
+rewired dependencies — without any real control from the engineer, unless you write a
+really specific prompt every time. The result is often code that works today and
+drifts tomorrow, with no shared picture of the system.
+
+This CLI is my answer for that side of the workflow. It turns your codebase into a
+diagram you can *see*, gives you a fluid, visual space to make the architectural
+decisions yourself, and then lets the agent do what it is great at: implementing them
+fast. You keep the control and the overview; the agents keep the speed. Everyone
+works from the same picture.
+
+I released it as open source so that as many people as possible can use it. If it
+helps you stay in the driver's seat of your next project, it was worth building.
 
 ## Quick start
 
