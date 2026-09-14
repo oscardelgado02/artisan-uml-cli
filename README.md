@@ -21,19 +21,19 @@ plugins required.
 
 ## Why I built this
 
-I'm Óscar Delgado, a software engineer. I like to plan the architecture first and keep
-it visible as the codebase grows — that's why I built the
+I'm [Óscar Delgado](https://oscardelgado.dev), a software engineer. I like to plan the architecture first and keep
+it visible as the codebase grows, that's why I built the
 [`artisan-uml`](https://github.com/oscardelgado02/artisan-uml) editor.
 
 Agentic coding workflows changed how fast we build, but they brought a new problem:
-agents happily create architecture on their own — new classes, new abstractions,
-rewired dependencies — without any real control from the engineer, unless you write a
+agents happily create architecture on their own, new classes, new abstractions,
+rewired dependencies, without any real control from the engineer, unless you write a
 really specific prompt every time. The result is often code that works today and
 drifts tomorrow, with no shared picture of the system.
 
 This CLI is my answer for that side of the workflow. It turns your codebase into a
 diagram you can *see*, gives you a fluid, visual space to make the architectural
-decisions yourself, and then lets the agent do what it is great at: implementing them
+decisions yourself, and then lets the agent do what it is great at, implementing them
 fast. You keep the control and the overview; the agents keep the speed. Everyone
 works from the same picture.
 
