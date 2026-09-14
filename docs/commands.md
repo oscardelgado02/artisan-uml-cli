@@ -14,6 +14,7 @@ artisan help <cmd>    # detailed help for one command
 | `artisan mark-ai` | After agent edits to `diagram.json`: record as pending (amber in editor). |
 | `artisan ack` | Mark pending agent changes as seen by the human. |
 | `artisan status` | Diagram size, pending changes in both directions. |
+| `artisan help [<cmd>]` | Help overview, or detailed help for one command. |
 | `artisan editor` | Open the editor app in your browser (`app` alias). |
 | `artisan serve [--port N]` | Optional localhost server: live autosave + pending API. |
 
