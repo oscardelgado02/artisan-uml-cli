@@ -1,0 +1,46 @@
+{
+  "name": "artisan-uml-cli",
+  "version": "0.1.0",
+  "description": "Human-first class diagrams for agentic coding. Scan C# into an editable UML diagram, track human vs AI changes, scaffold back into code.",
+  "type": "module",
+  "bin": {
+    "artisan": "bin/artisan.mjs"
+  },
+  "scripts": {
+    "test": "node test/run.mjs",
+    "prepublishOnly": "node test/run.mjs"
+  },
+  "files": [
+    "bin",
+    "lib",
+    "README.md"
+  ],
+  "dependencies": {
+    "artisan-uml": "^1.0.0"
+  },
+  "editorContract": 2,
+  "engines": {
+    "node": ">=18"
+  },
+  "keywords": [
+    "uml",
+    "class-diagram",
+    "agentic",
+    "ai",
+    "opencode",
+    "claude-code",
+    "codex",
+    "csharp",
+    "unity",
+    "scaffolding",
+    "architecture"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/oscardelgado02/artisan-uml-cli.git"
+  },
+  "bugs": {
+    "url": "https://github.com/oscardelgado02/artisan-uml-cli/issues"
+  }
+}
