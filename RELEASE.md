@@ -25,5 +25,5 @@ Open `.artisan/diagram.html` — the full Artisan UML editor as a single self-co
 
 C# first — built by a Unity developer, for Unity projects. More languages planned. Fully open source.
 
-Docs: https://oscardelgado02.github.io/artisan-uml-cli
+Docs: https://cli.artisan-uml.dev
 Issues: https://github.com/oscardelgado02/artisan-uml-cli/issues

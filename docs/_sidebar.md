@@ -4,7 +4,7 @@
 - [The `.artisan/` directory](files.md)
 - [Relations](relations.md)
 - [Agent packs](agent-packs.md)
-- [Editor docs (artisan-uml)](https://artisan-uml.dev/docs/)
+- [Editor docs (artisan-uml)](https://editor.artisan-uml.dev/docs/)
 - [GitHub repository](https://github.com/oscardelgado02/artisan-uml-cli)
 - [npm package](https://www.npmjs.com/package/artisan-uml-cli)
 - [Óscar Delgado](https://oscardelgado.dev)

@@ -30,5 +30,5 @@ looser links.
 
 Click any relation to edit its **kind, label and multiplicities** (`1`,
 `0..*`, …), reverse it, add a note, or delete it. See the
-[editor docs](https://artisan-uml.dev/docs/#/relations) for drawing relations by
+[editor docs](https://editor.artisan-uml.dev/docs/) for drawing relations by
 hand.

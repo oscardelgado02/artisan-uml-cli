@@ -187,7 +187,7 @@ node bin/artisan.mjs help
 ## Documentation
 
 Full documentation lives in [`docs/`](docs/) and is hosted on GitHub Pages:
-**[Documentation](https://oscardelgado02.github.io/artisan-uml-cli/)** — getting
+**[Documentation](https://cli.artisan-uml.dev/)** — getting
 started, the workflow, commands, the `.artisan/` directory, relations and agent
 packs.
 
