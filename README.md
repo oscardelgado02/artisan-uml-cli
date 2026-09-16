@@ -10,6 +10,8 @@ into an editable UML diagram, lets you redesign the architecture **by hand** in 
 editor, and turns those decisions back into code — while tracking who changed what,
 human or agent.
 
+> **Language support:** C# only, for now. More languages are planned.
+
 Architecture decisions stay yours. The diagram is the meeting point: agents read it
 (`diagram.puml`), the human edits it (`diagram.html`), and `artisan` reconciles both
 sides. Any agentic workflow can drive this package from the terminal — no special
