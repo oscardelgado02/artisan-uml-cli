@@ -52,6 +52,9 @@ cd your-unity-project
 artisan scan
 ```
 
+`artisan` not on PATH (common in agent shells and non-login terminals)? Run the
+package instead — same commands: `npx --yes artisan-uml-cli scan`.
+
 Then open **`.artisan/diagram.html`** — the editor as one self-contained file, no
 server needed. Click **Connect file** once so your edits autosave to
 `.artisan/diagram.json`. The bundled editor is the published
