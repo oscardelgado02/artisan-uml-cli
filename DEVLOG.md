@@ -7,6 +7,8 @@
 - Optimistic concurrency: `PUT /api/diagram` takes `If-Match` (revision derived from the file's mtime) and answers 409 when a stale tab tries to save over newer disk state — the editor reloads disk, disk always wins.
 - `POST /api/pending {refs}`: the served editor can persist its own disk-diff detections (editor-made additions/removals) so they survive a page reload, exactly like CLI-recorded refs.
 - Bug: `remove node` crashed after deleting when a cascaded relation's other endpoint was looked up by id through the name-only resolver — the removal landed but the refs never got recorded (ghosts died on reload). Endpoints are resolved before the delete now.
+- `artisan reject` (no keys) no longer restores `last-human.json` wholesale — that resurrected individually accepted changes (accept a removal, hit "Reject all", and the removed class came back). "Reject all" now reverts exactly the refs still pending, per-ref, and the reverse path (reject then "Mark all seen") stays safe since it never touches the diagram.
+- `serve` serves the editor from `.artisan/editor/` — a bundle rebuilt in the package dist never reaches the served tab unless that folder is refreshed (rm + `artisan scan`). The drag-follow fix "not working" was just this stale copy; sync dist → pnpm store → `.artisan/editor` after every build.
 - Global npm installs get `diagram.html` now: `findEditorDist` was looking for the hoisted `artisan-uml` dep at `node_modules/node_modules/artisan-uml` — a path that never exists — so `scan` skipped the self-contained editor whenever the CLI came from `npm install -g` or npx. Added the correct sibling path (`<prefix>/lib/node_modules/artisan-uml`).
 
 ## 18.09.2026
