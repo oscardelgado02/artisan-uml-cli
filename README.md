@@ -52,6 +52,9 @@ cd your-unity-project
 artisan scan
 ```
 
+`artisan` not on PATH (common in agent shells and non-login terminals)? Run the
+package instead — same commands: `npx --yes artisan-uml-cli scan`.
+
 Then open **`.artisan/diagram.html`** — the editor as one self-contained file, no
 server needed. Click **Connect file** once so your edits autosave to
 `.artisan/diagram.json`. The bundled editor is the published
@@ -91,7 +94,10 @@ and run `artisan mark-ai`.
 4. **The agent implements** — refactors renames, scaffolds new code, writes bodies per
    your notes.
 5. **`artisan mark-ai`** — when an *agent* restructures the diagram, its changes show up
-   **amber** in the editor until you press **Mark seen** (`artisan ack`).
+   **amber** in the editor until you press **Mark seen** (`artisan ack`). Terminal edits
+   (`add`/`edit`/`remove`) record the same refs, so they highlight and survive a reload too.
+   Removals render as struck-through amber **tombstones** (classes, members, relations),
+   and every item carries ✓ / ✕ chips for individual accept (`ack`) or reject.
 6. **`artisan status`** — size, pending changes in both directions.
 
 ## Commands
@@ -99,10 +105,11 @@ and run `artisan mark-ai`.
 | Command | What it does |
 | --- | --- |
 | `artisan scan` | Parse C# → diagram (merges your edits: positions and notes survive) + writes `.artisan/diagram.html` |
-| `artisan serve` | (optional) editor at `http://localhost:4173`, live autosave |
+| `artisan serve` | (optional) editor at `http://localhost:4173`, live autosave; picks up external `diagram.json` changes and highlights them (rev-guarded: stale tabs can't clobber newer disk state) |
 | `artisan diff` | Human diagram edits → markdown report for the agent; consumes them |
 | `artisan mark-ai` | Record agent-made `diagram.json` edits as pending (amber in editor) |
-| `artisan ack` | Human confirms agent changes seen (or the "Mark seen" button) |
+| `artisan ack [refs...]` | Human confirms AI changes seen (or the editor's ✓ chips / "Mark seen" button); with keys like `node:Wolf:removed` accepts just those |
+| `artisan reject [refs...]` | Undo pending AI changes — with keys like `node:Wolf:added` reverts exactly those (ghost-snapshot reverts); without keys restores `diagram.json` from the last human state |
 | `artisan status` | Diagram size, pending changes both directions |
 | `artisan add node <Name> [--kind ...] [--x --y] [--note]` | Add a class box from the terminal (auto-placed unless positioned) |
 | `artisan add member <Class> <attribute\|method\|value> <Name> [--type --params --vis --mods --note]` | Add members to an existing class |
@@ -143,7 +150,7 @@ Everything the CLI knows lives here, next to your project:
 | `diagram.puml` | PlantUML mirror — what agents read |
 | `map.json` | type → source file |
 | `last-ai.json` / `last-human.json` | change-tracking baselines |
-| `pending.json` | Agent changes the human hasn't seen yet |
+| `pending.json` | Changes the human hasn't seen yet (agent `mark-ai` + terminal `add`/`edit`/`remove`) |
 | `changelog.json` | history of consumed changes |
 | `editor/` | bundled editor assets (inlined into `diagram.html`) |
 | `diagram.html` | the editor as a single self-contained file |
