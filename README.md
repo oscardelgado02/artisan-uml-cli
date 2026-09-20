@@ -94,7 +94,8 @@ and run `artisan mark-ai`.
 4. **The agent implements** — refactors renames, scaffolds new code, writes bodies per
    your notes.
 5. **`artisan mark-ai`** — when an *agent* restructures the diagram, its changes show up
-   **amber** in the editor until you press **Mark seen** (`artisan ack`).
+   **amber** in the editor until you press **Mark seen** (`artisan ack`). Terminal edits
+   (`add`/`edit`/`remove`) record the same refs, so they highlight and survive a reload too.
 6. **`artisan status`** — size, pending changes in both directions.
 
 ## Commands
@@ -102,7 +103,7 @@ and run `artisan mark-ai`.
 | Command | What it does |
 | --- | --- |
 | `artisan scan` | Parse C# → diagram (merges your edits: positions and notes survive) + writes `.artisan/diagram.html` |
-| `artisan serve` | (optional) editor at `http://localhost:4173`, live autosave |
+| `artisan serve` | (optional) editor at `http://localhost:4173`, live autosave; served editor also picks up external `diagram.json` changes and highlights the new items |
 | `artisan diff` | Human diagram edits → markdown report for the agent; consumes them |
 | `artisan mark-ai` | Record agent-made `diagram.json` edits as pending (amber in editor) |
 | `artisan ack` | Human confirms agent changes seen (or the "Mark seen" button) |
@@ -146,7 +147,7 @@ Everything the CLI knows lives here, next to your project:
 | `diagram.puml` | PlantUML mirror — what agents read |
 | `map.json` | type → source file |
 | `last-ai.json` / `last-human.json` | change-tracking baselines |
-| `pending.json` | Agent changes the human hasn't seen yet |
+| `pending.json` | Changes the human hasn't seen yet (agent `mark-ai` + terminal `add`/`edit`/`remove`) |
 | `changelog.json` | history of consumed changes |
 | `editor/` | bundled editor assets (inlined into `diagram.html`) |
 | `diagram.html` | the editor as a single self-contained file |

@@ -1,6 +1,7 @@
 # Devlog
 
 ## 20.09.2026
+- Terminal edits light the editor up: `artisan add`/`edit`/`remove` now record refs in `pending.json` (same file `mark-ai` uses) — the change shows amber in the editor, survives page reloads, clears with ack. Embedded `diagram.html` picks the refs up too (they're inlined in the `__ARTISAN__` payload). Removals don't highlight (nothing left to point at).
 - Global npm installs get `diagram.html` now: `findEditorDist` was looking for the hoisted `artisan-uml` dep at `node_modules/node_modules/artisan-uml` — a path that never exists — so `scan` skipped the self-contained editor whenever the CLI came from `npm install -g` or npx. Added the correct sibling path (`<prefix>/lib/node_modules/artisan-uml`).
 
 ## 18.09.2026
