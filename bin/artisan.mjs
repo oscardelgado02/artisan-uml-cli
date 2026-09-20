@@ -3,7 +3,7 @@
 // Commands: scan | serve | diff | mark-ai | ack | status | help
 import { runScan } from '../lib/scan.mjs';
 import { runServe } from '../lib/serve.mjs';
-import { runDiff, markAi, runAck, runStatus } from '../lib/diff.mjs';
+import { runDiff, markAi, runAck, runReject, runStatus } from '../lib/diff.mjs';
 import { runAdd, runEdit, runRemove, runEditor } from '../lib/edit.mjs';
 import { artisanDir, readJSON } from '../lib/store.mjs';
 import { assertEditorContract } from '../lib/contract.mjs';
@@ -25,6 +25,10 @@ Commands:
                                         records changes as pending for the human
                                         (shown amber in the editor + diagram.html).
   ack                                   Mark pending AI changes as seen by the human.
+  reject [node|member|edge:<id>:<change> ...]
+                                        Undo pending AI changes: per-ref keys revert
+                                        just that change; no keys restores the last
+                                        human state and clears everything.
   status                                Show unseen human changes / pending AI changes.
   add     node|member|edge ...          Edit the diagram from the terminal:
                                           add node <Name> [--kind class] [--x N --y N] [--note "..."]
@@ -176,7 +180,11 @@ switch (cmd) {
     break;
   case 'ack':
     if (!readJSON(artisanDir('diagram.json'))) fail('No .artisan/diagram.json — run `artisan scan` first.');
-    runAck();
+    runAck({ keys: rest.filter((a) => /^(node|member|edge):/.test(a)) });
+    break;
+  case 'reject':
+    if (!readJSON(artisanDir('diagram.json'))) fail('No .artisan/diagram.json — run `artisan scan` first.');
+    runReject({ keys: rest.filter((a) => /^(node|member|edge):/.test(a)) });
     break;
   case 'status':
     runStatus();
