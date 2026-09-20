@@ -16,7 +16,7 @@
     "README.md"
   ],
   "dependencies": {
-    "artisan-uml": "^1.0.0"
+    "artisan-uml": "^1.1.0"
   },
   "editorContract": 2,
   "engines": {
