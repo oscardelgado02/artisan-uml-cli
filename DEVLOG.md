@@ -1,5 +1,9 @@
 # Devlog
 
+## 22.09.2026
+- `artisan impl-diff` — closes the loop the regular `diff` can't: the diagram compared against the actual code (read-only, marks nothing seen). Reuses the scan parser + `diffDiagram` with a name-based id alignment step (editor/CLI-added items carry random ids; diagram-unspecified types/mods never count as mismatches; notes never diffed). Report: diagram items missing from the code, code drift not in the diagram, signature mismatches. Writes `.artisan/impl-diff.json` so the editor can badge it.
+- `impl-diff.json` rides along in the embedded `__ARTISAN__` payload and `refreshEmbedded()` refreshes it on every command; `serve` gets `GET /api/impl` (parses the codebase on demand — the editor polls it every 30s, unlike the 5s pending tick).
+
 ## 20.09.2026
 - Removals highlight now too: `remove` records `removed` refs with a ghost snapshot of what was deleted (node, member, or cascaded relations with endpoint names) — the editor draws struck-through tombstones until you confirm. (Earlier note that removals don't highlight is obsolete.)
 - Fine-grained review: `artisan ack node:Wolf:removed` accepts a single ref (same `type:id:change` key format for all types), `artisan reject [keys...]` reverts diagram changes — per-ref inverse ops (un-add, un-modify via ghost, un-remove by re-inserting the ghost), or a full restore from `last-human.json` with no keys. serve gets `POST /api/ack {keys}` and `POST /api/reject {keys}` (returns the post-revert diagram so the editor can resync without phantom diffs).

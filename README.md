@@ -107,6 +107,7 @@ and run `artisan mark-ai`.
 | `artisan scan` | Parse C# → diagram (merges your edits: positions and notes survive) + writes `.artisan/diagram.html` |
 | `artisan serve` | (optional) editor at `http://localhost:4173`, live autosave; picks up external `diagram.json` changes and highlights them (rev-guarded: stale tabs can't clobber newer disk state) |
 | `artisan diff` | Human diagram edits → markdown report for the agent; consumes them |
+| `artisan impl-diff [--src DIR] [--json]` | Diagram ↔ code comparison (read-only): diagram items missing from the code, code drift not in the diagram, signature mismatches — so the agent can sync code after acks or out-of-band scans |
 | `artisan mark-ai` | Record agent-made `diagram.json` edits as pending (amber in editor) |
 | `artisan ack [refs...]` | Human confirms AI changes seen (or the editor's ✓ chips / "Mark seen" button); with keys like `node:Wolf:removed` accepts just those |
 | `artisan reject [refs...]` | Undo pending AI changes — with keys like `node:Wolf:added` reverts exactly those (ghost-snapshot reverts); without keys restores `diagram.json` from the last human state |

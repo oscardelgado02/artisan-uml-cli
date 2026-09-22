@@ -11,6 +11,7 @@ artisan help <cmd>    # detailed help for one command
 | --- | --- |
 | `artisan scan` | Parse C# → `.artisan/diagram.json` + `diagram.puml` + single-file `diagram.html`. Re-scan keeps positions and notes. |
 | `artisan diff [--json]` | Human diagram changes → markdown report for the agent (renames detected, removals ask). Consumes them. |
+| `artisan impl-diff [--src DIR] [--json]` | Diagram vs code, read-only: diagram items missing from the code, code drift not in the diagram, signature mismatches. Marks nothing seen — run it after `diff` in `/artisan-implement` to catch anything acked or scanned out-of-band. Writes `.artisan/impl-diff.json` so the editor can show its "Code out of sync" badge. |
 | `artisan mark-ai` | After agent edits to `diagram.json`: record as pending (amber in editor). |
 | `artisan ack` | Mark pending agent changes as seen by the human. |
 | `artisan status` | Diagram size, pending changes in both directions. |

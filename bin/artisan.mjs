@@ -4,6 +4,7 @@
 import { runScan } from '../lib/scan.mjs';
 import { runServe } from '../lib/serve.mjs';
 import { runDiff, markAi, runAck, runReject, runStatus } from '../lib/diff.mjs';
+import { runImplDiff } from '../lib/impldiff.mjs';
 import { runAdd, runEdit, runRemove, runEditor } from '../lib/edit.mjs';
 import { artisanDir, readJSON } from '../lib/store.mjs';
 import { assertEditorContract } from '../lib/contract.mjs';
@@ -21,6 +22,9 @@ Commands:
                                         with live autosave to .artisan/diagram.json.
   diff    [--json]                      Report human diagram changes the AI has not
                                         consumed yet (renames detected). Marks them seen.
+  impl-diff [--src DIR] [--json]        Compare the diagram against the actual code:
+                                        diagram items missing from the code, code drift
+                                        not yet in the diagram, signature mismatches.
   mark-ai                                After the AI edits .artisan/diagram.json:
                                         records changes as pending for the human
                                         (shown amber in the editor + diagram.html).
@@ -99,6 +103,15 @@ const TOPICS = {
   status: `artisan status
 
   Show unseen human changes and pending AI changes at a glance.`,
+  'impl-diff': `artisan impl-diff [--src DIR] [--json]
+
+  Compare the diagram (source of architectural truth) against the
+  actual code. Read-only, marks nothing seen. Reports:
+    - diagram items missing from the code (implement these)
+    - code that was never adopted into the diagram (drift)
+    - signature mismatches (code differs from diagram)
+  Run after \`artisan diff\` in /artisan-implement to catch anything
+  ack'd or scanned out-of-band before it was implemented.`,
   add: `artisan add <node|member|edge> ...
 
   add node <Name> [--kind class|abstract|interface|enum|record|struct]
@@ -173,6 +186,10 @@ switch (cmd) {
   case 'diff':
     if (!readJSON(artisanDir('diagram.json'))) fail('No .artisan/diagram.json — run `artisan scan` first.');
     runDiff({ json: !!args.json });
+    break;
+  case 'impl-diff':
+    if (!readJSON(artisanDir('diagram.json'))) fail('No .artisan/diagram.json — run `artisan scan` first.');
+    runImplDiff({ src: typeof args.src === 'string' ? args.src : '.', json: !!args.json });
     break;
   case 'mark-ai':
     if (!readJSON(artisanDir('diagram.json'))) fail('No .artisan/diagram.json — run `artisan scan` first.');
