@@ -410,6 +410,63 @@ assert.equal(afterRemove.edges.length, 0, 'edges cascaded with removed node');
 assert.ok(fs.readFileSync('.artisan/diagram.puml', 'utf8').includes('Wolf'), 'puml refreshed after edit/remove');
 ok('edit/remove node/member/edge: rename keeps id, cascade, disambiguation, puml refreshed');
 
+// rescan churn: same-name nodes keep their ids across rescans (renamed class,
+// CLI-added class) — no phantom removed+added pairs for an unchanged diagram
+section('rescan id stability');
+const tmp2 = fs.mkdtempSync(path.join(os.tmpdir(), 'artisan-ids-'));
+fs.mkdirSync(path.join(tmp2, 'src'), { recursive: true });
+process.chdir(tmp2);
+fs.writeFileSync('src/Animal.cs', 'namespace Z {\n  public abstract class Animal {\n    public string Name { get; set; }\n    public abstract void Speak();\n  }\n}\n');
+fs.writeFileSync('src/Crow.cs', 'namespace Z {\n  public class Crow : Animal {\n    public override void Speak() { }\n  }\n}\n');
+runScan({ src: '.', lang: 'csharp' });
+const crowId0 = readJSON('.artisan/diagram.json').nodes.find((n) => n.name === 'Crow').id;
+
+// human renames in the diagram (id kept), agent renames the code to match
+runEdit(['node', 'Crow', '--name', 'Raven']);
+fs.writeFileSync('src/Crow.cs', 'namespace Z {\n  public class Raven : Animal {\n    public override void Speak() { }\n  }\n}\n');
+runScan({ src: '.', lang: 'csharp' });
+let d0 = readJSON('.artisan/diagram.json');
+let raven = d0.nodes.find((n) => n.name === 'Raven');
+assert.ok(raven && raven.id === crowId0, 'renamed class keeps its diagram id across rescan');
+ok('rescan: renamed class keeps diagram id');
+
+// rescan again after diff consumes the rename → zero churn
+runDiff({});
+fs.writeFileSync('src/Raven.cs', fs.readFileSync('src/Crow.cs', 'utf8'));
+fs.rmSync('src/Crow.cs');
+runScan({ src: '.', lang: 'csharp' });
+d0 = readJSON('.artisan/diagram.json');
+raven = d0.nodes.find((n) => n.name === 'Raven');
+assert.ok(raven && raven.id === crowId0, 'same-name class keeps id on rescan');
+const churn = diffDiagram(normalizeDiagram(readJSON('.artisan/last-ai.json')), normalizeDiagram(d0));
+assert.ok(!churn.added.length && !churn.removed.length, 'no phantom add/remove churn after code-rename rescan');
+ok('rescan: no add/remove churn for semantically identical diagram');
+
+// CLI-added class (random id): with a code counterpart it keeps its id on rescan
+runAdd(['node', 'Birdhouse', '--kind', 'class']);
+const houseId = readJSON('.artisan/diagram.json').nodes.find((n) => n.name === 'Birdhouse').id;
+fs.writeFileSync('src/Birdhouse.cs', 'namespace Z {\n  public class Birdhouse {\n    public void Drop() { }\n  }\n}\n');
+runScan({ src: '.', lang: 'csharp' });
+const house = readJSON('.artisan/diagram.json').nodes.find((n) => n.name === 'Birdhouse');
+assert.ok(house && house.id === houseId, 'CLI-added node keeps random id across rescan');
+runDiff({}); // consume the CLI-added node first — then rescan must produce zero churn
+const churn2 = diffDiagram(normalizeDiagram(readJSON('.artisan/last-ai.json')), normalizeDiagram(readJSON('.artisan/diagram.json')));
+assert.ok(!churn2.added.length && !churn2.removed.length && !churn2.modified.length, 'no churn for CLI-added node');
+ok('rescan: CLI-added node stable, no churn');
+
+// relation id survives rescan when kind + endpoints unchanged (field-backed)
+fs.writeFileSync('src/Birdhouse.cs', 'namespace Z {\n  public class Birdhouse {\n    public List<Animal> guests;\n    public void Drop() { }\n  }\n}\n');
+runAdd(['edge', 'Birdhouse', 'Animal', '--kind', 'aggregation']);
+const edgeId = readJSON('.artisan/diagram.json').edges.find((e) => e.from === houseId).id;
+runScan({ src: '.', lang: 'csharp' });
+const edge2 = readJSON('.artisan/diagram.json').edges.find((e) => e.from === houseId);
+assert.ok(edge2 && edge2.id === edgeId, 'relation id stable across rescan');
+ok('rescan: relation id stable');
+
+process.chdir('/');
+fs.rmSync(tmp2, { recursive: true, force: true });
+
+
 // impl-diff: diagram vs code, read-only
 section('impl-diff (diagram vs code)');
 const implRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'artisan-impl-'));
