@@ -410,8 +410,122 @@ assert.equal(afterRemove.edges.length, 0, 'edges cascaded with removed node');
 assert.ok(fs.readFileSync('.artisan/diagram.puml', 'utf8').includes('Wolf'), 'puml refreshed after edit/remove');
 ok('edit/remove node/member/edge: rename keeps id, cascade, disambiguation, puml refreshed');
 
+// rescan churn: same-name nodes keep their ids across rescans (renamed class,
+// CLI-added class) — no phantom removed+added pairs for an unchanged diagram
+section('rescan id stability');
+const tmp2 = fs.mkdtempSync(path.join(os.tmpdir(), 'artisan-ids-'));
+fs.mkdirSync(path.join(tmp2, 'src'), { recursive: true });
+process.chdir(tmp2);
+fs.writeFileSync('src/Animal.cs', 'namespace Z {\n  public abstract class Animal {\n    public string Name { get; set; }\n    public abstract void Speak();\n  }\n}\n');
+fs.writeFileSync('src/Crow.cs', 'namespace Z {\n  public class Crow : Animal {\n    public override void Speak() { }\n  }\n}\n');
+runScan({ src: '.', lang: 'csharp' });
+const crowId0 = readJSON('.artisan/diagram.json').nodes.find((n) => n.name === 'Crow').id;
+
+// human renames in the diagram (id kept), agent renames the code to match
+runEdit(['node', 'Crow', '--name', 'Raven']);
+fs.writeFileSync('src/Crow.cs', 'namespace Z {\n  public class Raven : Animal {\n    public override void Speak() { }\n  }\n}\n');
+runScan({ src: '.', lang: 'csharp' });
+let d0 = readJSON('.artisan/diagram.json');
+let raven = d0.nodes.find((n) => n.name === 'Raven');
+assert.ok(raven && raven.id === crowId0, 'renamed class keeps its diagram id across rescan');
+ok('rescan: renamed class keeps diagram id');
+
+// rescan again after diff consumes the rename → zero churn
+runDiff({});
+fs.writeFileSync('src/Raven.cs', fs.readFileSync('src/Crow.cs', 'utf8'));
+fs.rmSync('src/Crow.cs');
+runScan({ src: '.', lang: 'csharp' });
+d0 = readJSON('.artisan/diagram.json');
+raven = d0.nodes.find((n) => n.name === 'Raven');
+assert.ok(raven && raven.id === crowId0, 'same-name class keeps id on rescan');
+const churn = diffDiagram(normalizeDiagram(readJSON('.artisan/last-ai.json')), normalizeDiagram(d0));
+assert.ok(!churn.added.length && !churn.removed.length, 'no phantom add/remove churn after code-rename rescan');
+ok('rescan: no add/remove churn for semantically identical diagram');
+
+// CLI-added class (random id): with a code counterpart it keeps its id on rescan
+runAdd(['node', 'Birdhouse', '--kind', 'class']);
+const houseId = readJSON('.artisan/diagram.json').nodes.find((n) => n.name === 'Birdhouse').id;
+fs.writeFileSync('src/Birdhouse.cs', 'namespace Z {\n  public class Birdhouse {\n    public void Drop() { }\n  }\n}\n');
+runScan({ src: '.', lang: 'csharp' });
+const house = readJSON('.artisan/diagram.json').nodes.find((n) => n.name === 'Birdhouse');
+assert.ok(house && house.id === houseId, 'CLI-added node keeps random id across rescan');
+runDiff({}); // consume the CLI-added node first — then rescan must produce zero churn
+const churn2 = diffDiagram(normalizeDiagram(readJSON('.artisan/last-ai.json')), normalizeDiagram(readJSON('.artisan/diagram.json')));
+assert.ok(!churn2.added.length && !churn2.removed.length && !churn2.modified.length, 'no churn for CLI-added node');
+ok('rescan: CLI-added node stable, no churn');
+
+// relation id survives rescan when kind + endpoints unchanged (field-backed)
+fs.writeFileSync('src/Birdhouse.cs', 'namespace Z {\n  public class Birdhouse {\n    public List<Animal> guests;\n    public void Drop() { }\n  }\n}\n');
+runAdd(['edge', 'Birdhouse', 'Animal', '--kind', 'aggregation']);
+const edgeId = readJSON('.artisan/diagram.json').edges.find((e) => e.from === houseId).id;
+runScan({ src: '.', lang: 'csharp' });
+const edge2 = readJSON('.artisan/diagram.json').edges.find((e) => e.from === houseId);
+assert.ok(edge2 && edge2.id === edgeId, 'relation id stable across rescan');
+ok('rescan: relation id stable');
+
+process.chdir('/');
+fs.rmSync(tmp2, { recursive: true, force: true });
+
+
+// impl-diff: diagram vs code, read-only
+section('impl-diff (diagram vs code)');
+const implRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'artisan-impl-'));
+fs.mkdirSync(path.join(implRoot, 'src'), { recursive: true });
+process.chdir(implRoot);
+fs.writeFileSync('src/Animal.cs', 'namespace Z {\n  public abstract class Animal {\n    public string Name { get; set; }\n    public abstract void Speak();\n  }\n}\n');
+fs.writeFileSync('src/Cat.cs', 'namespace Z {\n  public class Cat : Animal {\n    public override void Speak() { }\n  }\n}\n');
+runScan({ src: '.', lang: 'csharp' });
+
+// diagram-only: class Shelter with members (CLI-style ids), relation, unspecified-type method on Animal
+runAdd(['node', 'Shelter', '--kind', 'class']);
+runAdd(['member', 'Shelter', 'method', 'Feed', '--type', 'void']);
+runAdd(['member', 'Shelter', 'method', 'Say']); // diagram leaves type unspecified
+runAdd(['member', 'Animal', 'method', 'Roar']); // unspecified type, exists in code below
+runAdd(['edge', 'Shelter', 'Animal', '--kind', 'aggregation']);
+runAdd(['member', 'Shelter', 'attribute', 'residents', '--type', 'List<Animal>']);
+// code-only: extra class, extra member on Cat, signature drift on Animal.Speak
+fs.writeFileSync('src/Extra.cs', 'namespace Z {\n  public class Extra {\n    public int Tag;\n  }\n}\n');
+fs.writeFileSync('src/Cat.cs', 'namespace Z {\n  public class Cat : Animal {\n    public int livesLeft;\n    public override void Speak() { }\n  }\n}\n');
+fs.writeFileSync('src/Animal.cs', 'namespace Z {\n  public abstract class Animal {\n    public string Name { get; set; }\n    public abstract void Speak(string mood);\n    public void Roar() { }\n  }\n}\n');
+
+const { implDiff, formatImplReport } = await import('../lib/impldiff.mjs');
+const implBefore = fs.readFileSync('.artisan/last-ai.json', 'utf8');
+const { res: ires, map: imap } = implDiff({ src: '.' });
+assert.equal(fs.readFileSync('.artisan/last-ai.json', 'utf8'), implBefore, 'impl-diff is read-only (no snapshot writes)');
+ok('impl-diff read-only: no state consumed or written');
+
+assert.ok(ires.removed.some((r) => r.type === 'class' && r.name === 'Shelter'), 'diagram-only class missing from code');
+assert.ok(ires.removed.some((r) => r.type === 'relation' && r.name.includes('Shelter')), 'diagram-only relation');
+ok('missing-in-code: class + relation reported');
+assert.ok(!ires.removed.some((r) => r.type === 'member' && r.class === 'Shelter'), 'missing class members live in the ghost, not listed per-member');
+assert.ok(ires.added.some((a) => a.type === 'class' && a.name === 'Extra'), 'code-only class = drift');
+assert.ok(ires.added.some((a) => a.type === 'member' && a.class === 'Cat' && a.name === 'livesLeft'), 'code-only member = drift');
+ok('drift: code-only class + member reported');
+assert.ok(ires.modified.some((m) => m.ref === 'Animal.Speak' && m.what.includes('mood: string')), 'signature mismatch: params');
+ok('signature mismatch detected');
+assert.ok(!ires.modified.some((m) => m.ref === 'Animal.Roar'), 'unspecified diagram type/mods are not a mismatch');
+ok('diagram-unspecified type/mods lenient, presence still enforced');
+
+const ireport = formatImplReport(ires, imap);
+assert.ok(ireport.includes('missing from the code') && ireport.includes('Class Shelter'), 'report: missing section');
+assert.ok(ireport.includes('not in the diagram') && ireport.includes('Class Extra') && ireport.includes('src/Extra.cs'), 'report: drift section with file');
+assert.ok(ireport.includes('Animal.Speak') && ireport.includes('mood: string'), 'report: mismatch section');
+assert.ok(!ireport.includes('Notes'), 'report: no note noise');
+ok('impl-diff report format');
+
+// happy path: aligned everything → "matches"
+fs.rmSync(path.join(implRoot, 'src'), { recursive: true, force: true });
+fs.mkdirSync(path.join(implRoot, 'src'));
+fs.writeFileSync('src/Shelter.cs', 'namespace Z {\n  public class Shelter {\n    public List<Animal> residents;\n    public void Feed() { }\n    public void Say() { }\n  }\n}\n');
+fs.writeFileSync('src/Animal.cs', 'namespace Z {\n  public abstract class Animal {\n    public string Name { get; set; }\n    public abstract void Speak();\n    public void Roar() { }\n  }\n}\n');
+fs.writeFileSync('src/Cat.cs', 'namespace Z {\n  public class Cat : Animal {\n    public override void Speak() { }\n  }\n}\n');
+const happy = implDiff({ src: '.' });
+assert.ok(formatImplReport(happy.res, happy.map).startsWith('Implementation matches the diagram.'), 'aligned state reports match');
+ok('aligned diagram + code → clean report');
+
 process.chdir('/');
 fs.rmSync(tmp, { recursive: true, force: true });
 fs.rmSync(addRoot, { recursive: true, force: true });
+fs.rmSync(implRoot, { recursive: true, force: true });
 
 console.log(`\nAll ${passed} checks passed.`);
