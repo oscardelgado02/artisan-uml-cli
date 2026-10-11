@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.3.0 — 11.10.2026
+
+### Added
+- `artisan impl-diff` — read-only comparison of the diagram against the actual code: diagram items **missing from the code** (the regular diff misses them once acked or scanned out-of-band), code **drift not in the diagram**, and **signature mismatches**. Report only; marks nothing seen. Command docs added.
+- `serve` endpoint `GET /api/impl` and an impl-state field in the embedded `diagram.html` payload — the editor's "Code out of sync" badge reads from these.
+
+### Fixed
+- Rescan no longer removes and re-adds freshly created nodes: same-name and CLI-added classes keep their diagram ids across rescans (renames, out-of-band deletes), so no phantom add/remove churn in the diff.
+
 ## 0.2.0 — 20.09.2026
 
 ### Added

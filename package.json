@@ -1,6 +1,6 @@
 {
   "name": "artisan-uml-cli",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Human-first class diagrams for agentic coding. Scan C# into an editable UML diagram, track human vs AI changes, scaffold back into code.",
   "type": "module",
   "bin": {
@@ -16,7 +16,7 @@
     "README.md"
   ],
   "dependencies": {
-    "artisan-uml": "^1.1.0"
+    "artisan-uml": "^1.2.0"
   },
   "editorContract": 2,
   "engines": {

@@ -1,7 +1,7 @@
 <div align="center">
-  <img src="assets/wordmark.svg" alt="Artisan UML CLI" width="300" />
+  <img src="assets/wordmark.svg" alt="Artisan UML" width="280" />
 
-  <h2>CLI</h2>
+  <h2>The CLI</h2>
 </div>
 
 A zero-dependency Node CLI (≥18) that keeps your code and a class diagram in sync —
