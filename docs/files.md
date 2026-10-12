@@ -1,7 +1,7 @@
 # The `.artisan/` directory
 
 Everything the CLI knows lives next to your project. Commit it or ignore it —
-`artisan scan` regenerates it from source, but your notes and layout survive
+`artuml scan` regenerates it from source, but your notes and layout survive
 re-scans, so committing keeps that history.
 
 | File | Meaning |
@@ -56,8 +56,8 @@ interface Diagram {
 }
 ```
 
-Agents edit this file directly (then `artisan mark-ai`); humans edit it through
-the editor (autosave), `artisan add/edit/remove`, or by hand.
+Agents edit this file directly (then `artuml mark-ai`); humans edit it through
+the editor (autosave), `artuml add/edit/remove`, or by hand.
 
 ## Editor contract
 
@@ -65,6 +65,6 @@ The bundled editor comes from the
 [`artisan-uml`](https://www.npmjs.com/package/artisan-uml) npm package. Its
 `layout-constants.mjs` pins the box-size math the CLI mirrors when estimating
 node sizes; the CLI's `editorContract` field must match the editor's
-`CONTRACT_VERSION`. A mismatch fails loudly on `artisan scan` instead of
+`CONTRACT_VERSION`. A mismatch fails loudly on `artuml scan` instead of
 silently corrupting layout. `ARTISAN_EDITOR=path/to/dist` overrides the
 installed editor during development.

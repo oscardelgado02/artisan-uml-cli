@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// artisan — human-first class diagrams for agentic coding.
+// artuml — human-first class diagrams for agentic coding.
 // Commands: scan | serve | diff | mark-ai | ack | status | help
 import { runScan } from '../lib/scan.mjs';
 import { runServe } from '../lib/serve.mjs';
@@ -9,9 +9,9 @@ import { runAdd, runEdit, runRemove, runEditor } from '../lib/edit.mjs';
 import { artisanDir, readJSON } from '../lib/store.mjs';
 import { assertEditorContract } from '../lib/contract.mjs';
 
-const HELP = `artisan — human-first class diagrams for agentic coding
+const HELP = `artuml — human-first class diagrams for agentic coding
 
-Usage: artisan <command> [options]
+Usage: artuml <command> [options]
 
 Commands:
   scan    [--src DIR] [--lang csharp]   Parse code into .artisan/diagram.json (+ .puml)
@@ -72,7 +72,7 @@ Environment:
 `;
 
 const TOPICS = {
-  scan: `artisan scan [--src DIR] [--lang csharp]
+  scan: `artuml scan [--src DIR] [--lang csharp]
 
   Parse your code into .artisan/ and write the self-contained editor:
     diagram.json   source of truth (positions, notes, relations)
@@ -81,38 +81,38 @@ const TOPICS = {
     map.json / snapshots / pending / changelog
 
   Re-scan keeps your positions and notes. Languages: C# first.`,
-  serve: `artisan serve [--port N]
+  serve: `artuml serve [--port N]
 
   (Optional) serve the editor at http://localhost:4173 with live
   autosave to .artisan/diagram.json. Not needed — diagram.html
   already opens as a single file.`,
-  diff: `artisan diff [--json]
+  diff: `artuml diff [--json]
 
   Report the human diagram changes your coding agent has not seen
   yet (renames detected, removals ask before deleting). Marks them
   as consumed. --json emits machine-readable output.`,
-  'mark-ai': `artisan mark-ai
+  'mark-ai': `artuml mark-ai
 
   After the AGENT edits .artisan/diagram.json: record its changes as
   pending for the human — shown amber in the editor with a Mark
   seen button.`,
-  ack: `artisan ack
+  ack: `artuml ack
 
   Mark pending AI changes as seen by the human (clears the amber
   highlights).`,
-  status: `artisan status
+  status: `artuml status
 
   Show unseen human changes and pending AI changes at a glance.`,
-  'impl-diff': `artisan impl-diff [--src DIR] [--json]
+  'impl-diff': `artuml impl-diff [--src DIR] [--json]
 
   Compare the diagram (source of architectural truth) against the
   actual code. Read-only, marks nothing seen. Reports:
     - diagram items missing from the code (implement these)
     - code that was never adopted into the diagram (drift)
     - signature mismatches (code differs from diagram)
-  Run after \`artisan diff\` in /artisan-implement to catch anything
+  Run after \`artuml diff\` in /artisan-implement to catch anything
   ack'd or scanned out-of-band before it was implemented.`,
-  add: `artisan add <node|member|edge> ...
+  add: `artuml add <node|member|edge> ...
 
   add node <Name> [--kind class|abstract|interface|enum|record|struct]
                  [--x N --y N] [--note "..."]
@@ -123,8 +123,8 @@ const TOPICS = {
                        aggregation|association|dependency]
            [--label L] [--from-mult A] [--to-mult B]
 
-  These are HUMAN edits — your agent sees them via \`artisan diff\`.`,
-  edit: `artisan edit <node|member|edge> ...
+  These are HUMAN edits — your agent sees them via \`artuml diff\`.`,
+  edit: `artuml edit <node|member|edge> ...
 
   edit node <Name> [--name New] [--kind K] [--x N --y N] [--note "..."]
   edit member <Class> <Name> [--name New] [--type T] [--params P]
@@ -132,8 +132,8 @@ const TOPICS = {
   edit edge <From> <To> [--kind K] [--new-kind K] [--label L]
             [--from-mult A] [--to-mult B]
 
-  Renames keep the item id — \`artisan diff\` reports them as renames.`,
-  remove: `artisan remove <node|member|edge> ...   (alias: rm)
+  Renames keep the item id — \`artuml diff\` reports them as renames.`,
+  remove: `artuml remove <node|member|edge> ...   (alias: rm)
 
   remove node <Name>
   remove member <Class> <Name> [--kind attribute|method|value]
@@ -142,7 +142,7 @@ const TOPICS = {
   Removing a node cascades its relations. Pass --kind when a pair
   of classes has several relations or a class has members sharing
   a name.`,
-  editor: `artisan editor     (alias: app)
+  editor: `artuml editor     (alias: app)
 
   Open the Artisan UML editor app (bundled from the artisan-uml
   package) in your browser. Creates .artisan/diagram.json if none
@@ -184,23 +184,23 @@ switch (cmd) {
     break;
   }
   case 'diff':
-    if (!readJSON(artisanDir('diagram.json'))) fail('No .artisan/diagram.json — run `artisan scan` first.');
+    if (!readJSON(artisanDir('diagram.json'))) fail('No .artisan/diagram.json — run `artuml scan` first.');
     runDiff({ json: !!args.json });
     break;
   case 'impl-diff':
-    if (!readJSON(artisanDir('diagram.json'))) fail('No .artisan/diagram.json — run `artisan scan` first.');
+    if (!readJSON(artisanDir('diagram.json'))) fail('No .artisan/diagram.json — run `artuml scan` first.');
     runImplDiff({ src: typeof args.src === 'string' ? args.src : '.', json: !!args.json });
     break;
   case 'mark-ai':
-    if (!readJSON(artisanDir('diagram.json'))) fail('No .artisan/diagram.json — run `artisan scan` first.');
+    if (!readJSON(artisanDir('diagram.json'))) fail('No .artisan/diagram.json — run `artuml scan` first.');
     markAi();
     break;
   case 'ack':
-    if (!readJSON(artisanDir('diagram.json'))) fail('No .artisan/diagram.json — run `artisan scan` first.');
+    if (!readJSON(artisanDir('diagram.json'))) fail('No .artisan/diagram.json — run `artuml scan` first.');
     runAck({ keys: rest.filter((a) => /^(node|member|edge):/.test(a)) });
     break;
   case 'reject':
-    if (!readJSON(artisanDir('diagram.json'))) fail('No .artisan/diagram.json — run `artisan scan` first.');
+    if (!readJSON(artisanDir('diagram.json'))) fail('No .artisan/diagram.json — run `artuml scan` first.');
     runReject({ keys: rest.filter((a) => /^(node|member|edge):/.test(a)) });
     break;
   case 'status':

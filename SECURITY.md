@@ -22,7 +22,7 @@ Areas worth scrutiny:
 
 - **Source parsing** — the C# parser reads your repository files; it must
   never execute anything it parses and must fail safely on malformed input.
-- **Local server** (`artisan serve`) — binds `127.0.0.1` only, serves the
+- **Local server** (`artuml serve`) — binds `127.0.0.1` only, serves the
   bundled editor and the `.artisan/` API. The static handler must not serve
   files outside `.artisan/editor/`.
 - **Generated HTML** — `diagram.html` inlines your diagram data; class names,

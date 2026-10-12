@@ -13,7 +13,7 @@ human or agent.
 > **Language support:** C# only, for now. More languages are planned.
 
 Architecture decisions stay yours. The diagram is the meeting point: agents read it
-(`diagram.puml`), the human edits it (`diagram.html`), and `artisan` reconciles both
+(`diagram.puml`), the human edits it (`diagram.html`), and `artuml` reconciles both
 sides. Any agentic workflow can drive this package from the terminal — no special
 plugins required.
 
@@ -49,10 +49,10 @@ pnpm install -g artisan-uml-cli
 # or: npm install -g artisan-uml-cli
 
 cd your-unity-project
-artisan scan
+artuml scan
 ```
 
-`artisan` not on PATH (common in agent shells and non-login terminals)? Run the
+`artuml` not on PATH (common in agent shells and non-login terminals)? Run the
 package instead — same commands: `npx --yes artisan-uml-cli scan`.
 
 Then open **`.artisan/diagram.html`** — the editor as one self-contained file, no
@@ -64,7 +64,7 @@ server needed. Click **Connect file** once so your edits autosave to
 
 Two ways to run the same editor:
 
-| | `artisan editor` | `artisan serve` |
+| | `artuml editor` | `artuml serve` |
 | --- | --- | --- |
 | What runs | nothing — writes `diagram.html`, opens it | localhost HTTP server (`:4173`) |
 | Autosave | browser File System Access API (**Connect file**, one click) | `PUT /api/diagram` over localhost |
@@ -80,48 +80,48 @@ The main [Artisan repo](https://github.com/oscardelgado02/artisan) ships slash-c
 packs (`/artisan-scan`, `/artisan-diff`, `/artisan-implement`, `/artisan-architect`,
 `/artisan-status`) for opencode, Claude Code and Codex — its `install.sh` copies them
 into your agent's command folder. Without them, any agent can still work from this
-document: run `artisan diff` and read its markdown report, edit `.artisan/diagram.json`
-and run `artisan mark-ai`.
+document: run `artuml diff` and read its markdown report, edit `.artisan/diagram.json`
+and run `artuml mark-ai`.
 
 ## The workflow
 
-1. **`artisan scan`** — parses your C# into `.artisan/diagram.json` + a PlantUML mirror
+1. **`artuml scan`** — parses your C# into `.artisan/diagram.json` + a PlantUML mirror
    agents read. Re-scan keeps your positions and notes.
 2. **You redesign** in the editor: drag, rewire, rename, add classes, write notes.
-3. **`artisan diff`** — compares the diagram against the last known state and prints a
+3. **`artuml diff`** — compares the diagram against the last known state and prints a
    markdown report for your agent: *rename these*, *scaffold these*, *notes to honor*.
    Removals are never auto-deleted; the agent must ask.
 4. **The agent implements** — refactors renames, scaffolds new code, writes bodies per
    your notes.
-5. **`artisan mark-ai`** — when an *agent* restructures the diagram, its changes show up
-   **amber** in the editor until you press **Mark seen** (`artisan ack`). Terminal edits
+5. **`artuml mark-ai`** — when an *agent* restructures the diagram, its changes show up
+   **amber** in the editor until you press **Mark seen** (`artuml ack`). Terminal edits
    (`add`/`edit`/`remove`) record the same refs, so they highlight and survive a reload too.
    Removals render as struck-through amber **tombstones** (classes, members, relations),
    and every item carries ✓ / ✕ chips for individual accept (`ack`) or reject.
-6. **`artisan status`** — size, pending changes in both directions.
+6. **`artuml status`** — size, pending changes in both directions.
 
 ## Commands
 
 | Command | What it does |
 | --- | --- |
-| `artisan scan` | Parse C# → diagram (merges your edits: positions and notes survive) + writes `.artisan/diagram.html` |
-| `artisan serve` | (optional) editor at `http://localhost:4173`, live autosave; picks up external `diagram.json` changes and highlights them (rev-guarded: stale tabs can't clobber newer disk state) |
-| `artisan diff` | Human diagram edits → markdown report for the agent; consumes them |
-| `artisan impl-diff [--src DIR] [--json]` | Diagram ↔ code comparison (read-only): diagram items missing from the code, code drift not in the diagram, signature mismatches — so the agent can sync code after acks or out-of-band scans |
-| `artisan mark-ai` | Record agent-made `diagram.json` edits as pending (amber in editor) |
-| `artisan ack [refs...]` | Human confirms AI changes seen (or the editor's ✓ chips / "Mark seen" button); with keys like `node:Wolf:removed` accepts just those |
-| `artisan reject [refs...]` | Undo pending AI changes — with keys like `node:Wolf:added` reverts exactly those (ghost-snapshot reverts); without keys restores `diagram.json` from the last human state |
-| `artisan status` | Diagram size, pending changes both directions |
-| `artisan add node <Name> [--kind ...] [--x --y] [--note]` | Add a class box from the terminal (auto-placed unless positioned) |
-| `artisan add member <Class> <attribute\|method\|value> <Name> [--type --params --vis --mods --note]` | Add members to an existing class |
-| `artisan add edge <From> <To> [--kind --label --from-mult --to-mult]` | Add a relation between two classes |
-| `artisan edit node <Name> [--name --kind --x --y --note]` | Rename / re-kind / move / note a class (renames keep the id) |
-| `artisan edit member <Class> <Name> [--name --type --params --vis --mods --note]` | Update an existing member |
-| `artisan edit edge <From> <To> [--kind --new-kind --label --from-mult --to-mult]` | Update a relation (`--label-off` clears the label) |
-| `artisan remove node <Name>` | Delete a class (its relations cascade) |
-| `artisan remove member <Class> <Name> [--kind]` / `remove edge <From> <To> [--kind]` | Delete a member or relation |
-| `artisan editor` | Open the Artisan UML editor app (bundled from the `artisan-uml` package) — creates `.artisan/` with an empty diagram if none exists |
-| `artisan help [command]` | Overview or detailed help for one command |
+| `artuml scan` | Parse C# → diagram (merges your edits: positions and notes survive) + writes `.artisan/diagram.html` |
+| `artuml serve` | (optional) editor at `http://localhost:4173`, live autosave; picks up external `diagram.json` changes and highlights them (rev-guarded: stale tabs can't clobber newer disk state) |
+| `artuml diff` | Human diagram edits → markdown report for the agent; consumes them |
+| `artuml impl-diff [--src DIR] [--json]` | Diagram ↔ code comparison (read-only): diagram items missing from the code, code drift not in the diagram, signature mismatches — so the agent can sync code after acks or out-of-band scans |
+| `artuml mark-ai` | Record agent-made `diagram.json` edits as pending (amber in editor) |
+| `artuml ack [refs...]` | Human confirms AI changes seen (or the editor's ✓ chips / "Mark seen" button); with keys like `node:Wolf:removed` accepts just those |
+| `artuml reject [refs...]` | Undo pending AI changes — with keys like `node:Wolf:added` reverts exactly those (ghost-snapshot reverts); without keys restores `diagram.json` from the last human state |
+| `artuml status` | Diagram size, pending changes both directions |
+| `artuml add node <Name> [--kind ...] [--x --y] [--note]` | Add a class box from the terminal (auto-placed unless positioned) |
+| `artuml add member <Class> <attribute\|method\|value> <Name> [--type --params --vis --mods --note]` | Add members to an existing class |
+| `artuml add edge <From> <To> [--kind --label --from-mult --to-mult]` | Add a relation between two classes |
+| `artuml edit node <Name> [--name --kind --x --y --note]` | Rename / re-kind / move / note a class (renames keep the id) |
+| `artuml edit member <Class> <Name> [--name --type --params --vis --mods --note]` | Update an existing member |
+| `artuml edit edge <From> <To> [--kind --new-kind --label --from-mult --to-mult]` | Update a relation (`--label-off` clears the label) |
+| `artuml remove node <Name>` | Delete a class (its relations cascade) |
+| `artuml remove member <Class> <Name> [--kind]` / `remove edge <From> <To> [--kind]` | Delete a member or relation |
+| `artuml editor` | Open the Artisan UML editor app (bundled from the `artisan-uml` package) — creates `.artisan/` with an empty diagram if none exists |
+| `artuml help [command]` | Overview or detailed help for one command |
 
 Scan skips `Library/`, `obj/`, `bin/`, `Temp/`, `Logs/`, `Packages/`, `Editor/` —
 Unity-aware out of the box.
@@ -156,7 +156,7 @@ Everything the CLI knows lives here, next to your project:
 | `editor/` | bundled editor assets (inlined into `diagram.html`) |
 | `diagram.html` | the editor as a single self-contained file |
 
-Commit it or ignore it — it regenerates from source with `artisan scan`, but your
+Commit it or ignore it — it regenerates from source with `artuml scan`, but your
 notes and layout survive re-scans, so committing keeps that history.
 
 ## Project structure
@@ -168,7 +168,7 @@ notes and layout survive re-scans, so committing keeps that history.
 │   ├── diagram.mjs        relation detection + layered auto-layout
 │   ├── scan.mjs           the scan command: merge, snapshots, layout
 │   ├── diff.mjs           change tracking: renames, pending refs, reports
-│   ├── edit.mjs           add node/member/edge commands + `artisan editor`
+│   ├── edit.mjs           add node/member/edge commands + `artuml editor`
 │   ├── embed.mjs          inlines the editor into the single-file diagram.html
 │   ├── serve.mjs          optional localhost server (live autosave + pending API)
 │   ├── contract.mjs       editor contract guard (see below)
@@ -182,7 +182,7 @@ The bundled editor comes from the
 [`artisan-uml`](https://www.npmjs.com/package/artisan-uml) npm package. Its
 `layout-constants.mjs` pins the box-size math the CLI mirrors when estimating node
 sizes before your browser measures them; this package's `editorContract` field must
-match the editor's `CONTRACT_VERSION`. A mismatch **fails loudly on `artisan scan`**
+match the editor's `CONTRACT_VERSION`. A mismatch **fails loudly on `artuml scan`**
 instead of silently corrupting the layout. For development, a local
 `ARTISAN_EDITOR=path/to/dist` overrides the installed editor.
 

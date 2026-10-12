@@ -1,5 +1,9 @@
 # Devlog
 
+## 12.10.2026
+- Binary renamed `artisan` → `artuml` (Laravel's own `artisan` kept shadowing installs on PATH). Package names, `.artisan/` state dir, `ARTISAN_EDITOR` and the `/artisan-*` slash packs unchanged. Help text, error strings and docs now say `artuml` everywhere.
+
+
 ## 22.09.2026
 - `artisan impl-diff` — closes the loop the regular `diff` can't: the diagram compared against the actual code (read-only, marks nothing seen). Reuses the scan parser + `diffDiagram` with a name-based id alignment step (editor/CLI-added items carry random ids; diagram-unspecified types/mods never count as mismatches; notes never diffed). Report: diagram items missing from the code, code drift not in the diagram, signature mismatches. Writes `.artisan/impl-diff.json` so the editor can badge it.
 - `impl-diff.json` rides along in the embedded `__ARTISAN__` payload and `refreshEmbedded()` refreshes it on every command; `serve` gets `GET /api/impl` (parses the codebase on demand — the editor polls it every 30s, unlike the 5s pending tick).

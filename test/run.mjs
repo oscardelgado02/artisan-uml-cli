@@ -200,7 +200,7 @@ runDiff({});
 const afterAi = JSON.parse(fs.readFileSync('.artisan/last-ai.json', 'utf8'));
 assert.equal(afterAi.projectNotes, 'Make it fun', 'AI consumed human edits');
 assert.equal(afterAi.nodes[0].note, 'root of all creatures');
-ok('artisan diff consumed human changes');
+ok('artuml diff consumed human changes');
 const lastAi1 = JSON.parse(fs.readFileSync('.artisan/last-ai.json', 'utf8'));
 
 // mark-ai: AI edits diagram, pending refs appear
@@ -210,13 +210,13 @@ const { markAi } = await import('../lib/diff.mjs');
 markAi();
 const pending = JSON.parse(fs.readFileSync('.artisan/pending.json', 'utf8'));
 assert.ok(pending.some((p) => p.type === 'node' && p.change === 'added' && p.summary.includes('QuestGiver')), 'pending node ref');
-ok('artisan mark-ai recorded AI change for human');
+ok('artuml mark-ai recorded AI change for human');
 
 const { runAck } = await import('../lib/diff.mjs');
 runAck();
 const pending2 = JSON.parse(fs.readFileSync('.artisan/pending.json', 'utf8'));
 assert.equal(pending2.length, 0, 'ack cleared pending');
-ok('artisan ack cleared highlights');
+ok('artuml ack cleared highlights');
 
 const changelog = JSON.parse(fs.readFileSync('.artisan/changelog.json', 'utf8'));
 assert.ok(changelog.length >= 4, 'changelog has entries: ' + changelog.length);

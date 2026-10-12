@@ -20,7 +20,7 @@ node bin/artisan.mjs help
 - **Respect the editor contract.** `package.json` pins `editorContract`; it must
   match the `CONTRACT_VERSION` exported by the bundled
   [`artisan-uml`](https://www.npmjs.com/package/artisan-uml) package. A mismatch
-  fails loudly on `artisan scan` by design — never bypass it.
+  fails loudly on `artuml scan` by design — never bypass it.
 - **Human changes win.** Any behavior change must keep the guarantees: re-scan
   preserves positions and notes, removals are never auto-deleted by agents,
   `diff` consumes human edits once.
@@ -30,7 +30,7 @@ node bin/artisan.mjs help
 ## Reporting issues
 
 Open a GitHub issue with steps to reproduce, expected vs actual behavior, and
-the `artisan` command you ran. Security issues: see [SECURITY.md](SECURITY.md).
+the `artuml` command you ran. Security issues: see [SECURITY.md](SECURITY.md).
 
 ## Code of conduct
 

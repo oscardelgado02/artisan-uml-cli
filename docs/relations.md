@@ -1,6 +1,6 @@
 # Relations
 
-`artisan scan` detects all six UML relation kinds from your source. These are
+`artuml scan` detects all six UML relation kinds from your source. These are
 pragmatic heuristics — hand-tune anything in the editor; re-scan keeps your
 edits.
 

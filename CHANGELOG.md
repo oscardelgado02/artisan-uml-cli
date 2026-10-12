@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.4.0 — 12.10.2026
+
+### Changed
+- **BREAKING: the binary is now `artuml`** (formerly `artisan`) — a name collision with Laravel's `artisan` too often broke `PATH` installs. All commands, help text and examples now use `artuml scan`, `artuml diff`, `artuml serve`, etc. Update any scripts that call `artisan …`.
+- Package names unchanged: still `npm i artisan-uml-cli`. The `.artisan/` state dir, the `ARTISAN_EDITOR` env var and the `/artisan-*` slash-command packs keep their names.
+- `npx --yes artisan-uml-cli` / `pnpm dlx artisan-uml-cli` still work as before — only the on-PATH name changed.
+
 ## 0.3.0 — 11.10.2026
 
 ### Added

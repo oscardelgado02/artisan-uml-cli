@@ -4,18 +4,18 @@ Give your coding agent a living class diagram — and give yourself the final wo
 
     pnpm install -g artisan-uml-cli
     cd your-unity-project
-    artisan scan
+    artuml scan
 
 Open `.artisan/diagram.html` — the full Artisan UML editor as a single self-contained file. No server, no account, no setup.
 
 **What you get**
 
-- `artisan scan` — parses your C# into a living diagram with all six UML relations, plus a PlantUML mirror the agent can read. Re-scans keep your positions and notes.
-- `artisan diff` — after you redesign, writes a report for your agent: renames detected as renames, new types to scaffold, and your notes as instructions to honor.
-- `artisan mark-ai` / `artisan ack` — agent architecture changes appear highlighted in amber in your editor. You review, you confirm. Architecture decisions stay human.
-- `artisan add / edit / remove` — grow or prune the diagram from the terminal.
-- `artisan editor` / `artisan serve` — the same editor with autosave, on any browser.
-- `artisan help <command>` — every command documented in the terminal.
+- `artuml scan` — parses your C# into a living diagram with all six UML relations, plus a PlantUML mirror the agent can read. Re-scans keep your positions and notes.
+- `artuml diff` — after you redesign, writes a report for your agent: renames detected as renames, new types to scaffold, and your notes as instructions to honor.
+- `artuml mark-ai` / `artuml ack` — agent architecture changes appear highlighted in amber in your editor. You review, you confirm. Architecture decisions stay human.
+- `artuml add / edit / remove` — grow or prune the diagram from the terminal.
+- `artuml editor` / `artuml serve` — the same editor with autosave, on any browser.
+- `artuml help <command>` — every command documented in the terminal.
 
 **Designed for trust**
 
