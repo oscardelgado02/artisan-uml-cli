@@ -2,12 +2,13 @@
 // artuml — human-first class diagrams for agentic coding.
 // Commands: scan | serve | diff | mark-ai | ack | status | help
 import { runScan } from '../lib/scan.mjs';
-import { runServe } from '../lib/serve.mjs';
+import { runServe, ensureServeRunning } from '../lib/serve.mjs';
 import { runDiff, markAi, runAck, runReject, runStatus } from '../lib/diff.mjs';
 import { runImplDiff } from '../lib/impldiff.mjs';
 import { runAdd, runEdit, runRemove, runEditor } from '../lib/edit.mjs';
 import { artisanDir, readJSON } from '../lib/store.mjs';
 import { assertEditorContract } from '../lib/contract.mjs';
+import { loadConfig } from '../lib/config.mjs';
 
 const HELP = `artuml — human-first class diagrams for agentic coding
 
@@ -20,8 +21,9 @@ Commands:
                                         Re-scan keeps your positions and notes.
   serve   [--port N]                    (Optional) serve the editor at localhost
                                         with live autosave to .artisan/diagram.json.
-  diff    [--json]                      Report human diagram changes the AI has not
+  diff    [--json] [--peek]             Report human diagram changes the AI has not
                                         consumed yet (renames detected). Marks them seen.
+                                        --peek reports without consuming.
   impl-diff [--src DIR] [--json]        Compare the diagram against the actual code:
                                         diagram items missing from the code, code drift
                                         not yet in the diagram, signature mismatches.
@@ -66,6 +68,8 @@ Files under .artisan/:
   last-human.json snapshot the human last acknowledged
   pending.json   AI changes the human has not seen yet
   changelog.json append-only history of changes and acks
+  config.json    settings (askBeforeRemove, autoServe) — optional, overrides
+                 the global ~/.config/artuml/config.json
 
 Environment:
   ARTISAN_EDITOR   path to a built editor (dist/) to copy on scan
@@ -86,11 +90,13 @@ const TOPICS = {
   (Optional) serve the editor at http://localhost:4173 with live
   autosave to .artisan/diagram.json. Not needed — diagram.html
   already opens as a single file.`,
-  diff: `artuml diff [--json]
+  diff: `artuml diff [--json] [--peek]
 
   Report the human diagram changes your coding agent has not seen
   yet (renames detected, removals ask before deleting). Marks them
-  as consumed. --json emits machine-readable output.`,
+  as consumed. --peek reports without consuming — use it when you
+  only want to look (artuml status does this internally).
+  --json emits machine-readable output.`,
   'mark-ai': `artuml mark-ai
 
   After the AGENT edits .artisan/diagram.json: record its changes as
@@ -169,6 +175,13 @@ for (let i = 0; i < rest.length; i++) {
   }
 }
 
+// autoServe: config opt-in — every artuml command makes sure the editor server
+// is up so diagram.html + serve stay in sync without a separate step.
+const AUTO_SERVE_CMDS = new Set(['scan', 'diff', 'impl-diff', 'mark-ai', 'ack', 'reject', 'status', 'add', 'edit', 'remove', 'rm']);
+if (AUTO_SERVE_CMDS.has(cmd) && loadConfig().autoServe) {
+  await ensureServeRunning();
+}
+
 switch (cmd) {
   case 'scan':
     try {
@@ -185,7 +198,7 @@ switch (cmd) {
   }
   case 'diff':
     if (!readJSON(artisanDir('diagram.json'))) fail('No .artisan/diagram.json — run `artuml scan` first.');
-    runDiff({ json: !!args.json });
+    runDiff({ json: !!args.json, peek: !!args.peek });
     break;
   case 'impl-diff':
     if (!readJSON(artisanDir('diagram.json'))) fail('No .artisan/diagram.json — run `artuml scan` first.');

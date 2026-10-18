@@ -100,18 +100,25 @@ and run `artuml mark-ai`.
    and every item carries ✓ / ✕ chips for individual accept (`ack`) or reject.
 6. **`artuml status`** — size, pending changes in both directions.
 
+## Supported languages
+
+The scanner speaks **C#** today (Unity-friendly — `Library/`, `obj/`, `bin/` and
+friends are skipped). More languages are welcome: the shared extractor
+(`lib/extract.mjs`) is the single seam a new parser plugs into — add a
+`find<X>Files` + `parse<X>File` pair and wire it into `parseCodeDiagram`.
+
 ## Commands
 
 | Command | What it does |
 | --- | --- |
 | `artuml scan` | Parse C# → diagram (merges your edits: positions and notes survive) + writes `.artisan/diagram.html` |
 | `artuml serve` | (optional) editor at `http://localhost:4173`, live autosave; picks up external `diagram.json` changes and highlights them (rev-guarded: stale tabs can't clobber newer disk state) |
-| `artuml diff` | Human diagram edits → markdown report for the agent; consumes them |
+| `artuml diff [--peek]` | Human diagram edits → markdown report for the agent; consumes them (`--peek` reports without consuming) |
 | `artuml impl-diff [--src DIR] [--json]` | Diagram ↔ code comparison (read-only): diagram items missing from the code, code drift not in the diagram, signature mismatches — so the agent can sync code after acks or out-of-band scans |
-| `artuml mark-ai` | Record agent-made `diagram.json` edits as pending (amber in editor) |
+| `artuml mark-ai` | Merge agent-made `diagram.json` edits into pending (amber in editor) |
 | `artuml ack [refs...]` | Human confirms AI changes seen (or the editor's ✓ chips / "Mark seen" button); with keys like `node:Wolf:removed` accepts just those |
 | `artuml reject [refs...]` | Undo pending AI changes — with keys like `node:Wolf:added` reverts exactly those (ghost-snapshot reverts); without keys restores `diagram.json` from the last human state |
-| `artuml status` | Diagram size, pending changes both directions |
+| `artuml status` | Diagram size, pending changes both directions — plus the actual human change report (non-consuming peek) |
 | `artuml add node <Name> [--kind ...] [--x --y] [--note]` | Add a class box from the terminal (auto-placed unless positioned) |
 | `artuml add member <Class> <attribute\|method\|value> <Name> [--type --params --vis --mods --note]` | Add members to an existing class |
 | `artuml add edge <From> <To> [--kind --label --from-mult --to-mult]` | Add a relation between two classes |

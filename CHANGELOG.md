@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.5.0 — 18.10.2026
+
+### Added
+- Config system: optional global `~/.config/artuml/config.json` and per-project `.artisan/config.json` (project wins). Keys: `askBeforeRemove` (default `true` — skills prompt before removals) and `autoServe` (default `false` — every mutating/reading command then ensures `artuml serve` is running). `scan` seeds the project config with defaults if absent.
+- `artuml diff --peek` — report unseen human changes **without** consuming them (no `last-ai.json` write). `artuml status` now embeds this peek, so one command shows counters *and* the actual human changes.
+- `serve` gains an already-running check (`ensureServeRunning`, probed via `GET /api/status` on port 4173) used by the autoServe hook; spawned instances set `ARTISAN_NO_BROWSER=1` so they never steal focus.
+- `GET /api/impl` caches its parse per revision (60 s TTL) — the editor's ~30 s poll no longer re-parses the whole code tree each time.
+
+### Changed
+- **BREAKING (behavior):** `mark-ai` now *merges* new refs into `pending.json` (dedup by key) instead of overwriting the file — agent runs can no longer clobber unacknowledged human CLI-edit refs.
+- `refreshEmbedded` skips the ~92 KB `diagram.html` rewrite when diagram/pending/impl state (and the editor shell) are unchanged — read-only commands like `status` and `diff --peek` no longer churn the file.
+- Shared source extractor (`lib/extract.mjs`): the copy-pasted walk+parse+dedupe pipeline in `scan` and `impl-diff` is one function now — the seam a second language plugs into.
+
 ## 0.4.0 — 12.10.2026
 
 ### Changed

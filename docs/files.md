@@ -14,6 +14,7 @@ re-scans, so committing keeps that history.
 | `last-human.json` | snapshot the human last acknowledged (baseline for `mark-ai`) |
 | `pending.json` | agent changes the human has not seen yet (amber highlights) |
 | `changelog.json` | append-only history of changes and acks |
+| `config.json` | settings — `askBeforeRemove`, `autoServe` (see `docs/commands.md`); optional, overrides the global `~/.config/artuml/config.json` |
 | `editor/` | bundled editor assets (inlined into `diagram.html`) |
 
 ## Diagram shape
@@ -56,8 +57,9 @@ interface Diagram {
 }
 ```
 
-Agents edit this file directly (then `artuml mark-ai`); humans edit it through
-the editor (autosave), `artuml add/edit/remove`, or by hand.
+Agents change the diagram via `artuml add/edit/remove` (or directly as a last
+resort, then `artuml mark-ai`); humans edit it through the editor (autosave),
+`artuml add/edit/remove`, or by hand.
 
 ## Editor contract
 
