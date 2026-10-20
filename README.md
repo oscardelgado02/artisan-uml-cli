@@ -57,7 +57,7 @@ package instead — same commands: `npx --yes artisan-uml-cli scan`.
 
 Then open **`.artisan/diagram.html`** — the editor as one self-contained file, no
 server needed. Click **Connect file** once so your edits autosave to
-`.artisan/diagram.json`. The bundled editor is the published
+`.artisan/diagram.json`. The editor comes from the published
 [`artisan-uml`](https://www.npmjs.com/package/artisan-uml) package, inlined into the file.
 
 ### `editor` or `serve`?
@@ -169,7 +169,7 @@ notes and layout survive re-scans, so committing keeps that history.
 ## Project structure
 
 ```
-├── bin/artisan.mjs        entry point: command dispatch
+├── bin/artuml.mjs         entry point: command dispatch
 ├── lib/
 │   ├── csharp.mjs         pragmatic C# parser (types, members, nesting, partials)
 │   ├── diagram.mjs        relation detection + layered auto-layout
@@ -198,8 +198,19 @@ instead of silently corrupting the layout. For development, a local
 ```bash
 pnpm install        # links the workspace/registry editor package
 pnpm test           # parser, diff engine, scan flow, layout checks
-node bin/artisan.mjs help
+node bin/artuml.mjs help
 ```
+
+## Release
+
+Publishing is manual (no CI workflow):
+
+```bash
+pnpm test           # prepublishOnly: tests + editor check (artisan-uml must ship dist/)
+pnpm publish --access public
+```
+
+`artisan-uml@^1.2.2` must be on npm first — it ships the built editor.
 
 ## Documentation
 

@@ -9,6 +9,7 @@ import { runAdd, runEdit, runRemove, runEditor } from '../lib/edit.mjs';
 import { artisanDir, readJSON } from '../lib/store.mjs';
 import { assertEditorContract } from '../lib/contract.mjs';
 import { loadConfig } from '../lib/config.mjs';
+import { readFileSync } from 'node:fs';
 
 const HELP = `artuml — human-first class diagrams for agentic coding
 
@@ -58,6 +59,7 @@ Commands:
                                           remove member <Class> <Name> [--kind attribute|method|value]
                                           remove edge <From> <To> [--kind K]
   help    [command]                     Show this help, or detailed help for one command.
+  --version                            Print the CLI version.
 
 Files under .artisan/:
   diagram.json   the source of truth (edit it in the editor)
@@ -260,6 +262,12 @@ switch (cmd) {
       if (!t) fail(`No help topic: ${topic}\n\nTopics: ${Object.keys(TOPICS).join(', ')}`);
       console.log(t);
     }
+    break;
+  }
+  case '--version':
+  case '-v': {
+    const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
+    console.log(pkg.version);
     break;
   }
   default:

@@ -16,8 +16,8 @@ cd your-unity-project
 artuml scan
 ```
 
-Zero runtime dependencies. Everything it knows lives in `.artisan/`, next to
-your project.
+One runtime dependency: the `artisan-uml` editor package. Everything it knows
+lives in `.artisan/`, next to your project.
 
 ## Open the diagram
 
