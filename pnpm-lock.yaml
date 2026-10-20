@@ -9,14 +9,14 @@ importers:
   .:
     dependencies:
       artisan-uml:
-        specifier: ^1.2.1
-        version: 1.2.1
+        specifier: ^1.2.2
+        version: 1.2.2
 
 packages:
 
-  artisan-uml@1.2.1:
-    resolution: {integrity: sha512-fOcmQQ5ORJxfmZmKhETXvsVAS5nGmDwHa4GWxDEGUlmlDt8RB8B9Zqe2++ahJgX9tR7BAawHL9c+JAROVejUTg==}
+  artisan-uml@1.2.2:
+    resolution: {integrity: sha512-X/63cmGdI+QnaDspZ6j7LOWTjYCJxHY3xlsS8m/L5mas2DDJpirgAFzfcKELQSTXlv6UoaE5rKMDGRKXQbsaaA==}
 
 snapshots:
 
-  artisan-uml@1.2.1: {}
+  artisan-uml@1.2.2: {}
