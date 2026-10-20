@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.5.1 — 20.10.2026
+
+### Fixed
+- The editor is back. `artisan-uml@1.2.1` was published without its built `dist/` (the folder is gitignored and the tarball was packed from an unbuilt checkout), so every install ended up without an editor: `artuml scan` skipped `diagram.html` and `artuml editor`/`serve` failed. This release requires `artisan-uml@^1.2.2`, which ships the built editor again (`artisan-uml` 1.2.2 adds a `prepack` build and a publish guard).
+- The "editor build not found" hint no longer claims that `npm install -g artisan-uml-cli` bundles the editor — it never did. It now points at the `artisan-uml` package.
+
+### Added
+- `artuml --version` (also `-v`) prints the CLI version.
+- `prepublishOnly` now also checks that the `artisan-uml` dependency ships its built `dist/` (the failure that broke 1.2.1), so a manual publish cannot repeat it.
+
+### Changed
+- The editor and the layout constants come from the `artisan-uml` package only: the lookup for a bundled `editor-dist/` copy (never produced by anything) is gone.
+- `pnpm-workspace.yaml`: `minimumReleaseAgeExclude` excludes our own `artisan-uml` by name, so a fresh editor release is installable right away instead of waiting out the 24 h age gate.
+
+### Release order
+- `artisan-uml@1.2.2` has to be on npm before this release. After it is published: run `pnpm install` in this repo and commit the refreshed `pnpm-lock.yaml`.
+
 ## 0.5.0 — 18.10.2026
 
 ### Added

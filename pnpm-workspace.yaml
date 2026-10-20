@@ -1,2 +1,4 @@
 minimumReleaseAgeExclude:
-  - artisan-uml@1.0.0 || 1.1.0 || 1.2.0 || 1.2.1
+  # First-party: our own releases must be installable the moment they are
+  # published (the CLI depends on the editor package).
+  - artisan-uml
