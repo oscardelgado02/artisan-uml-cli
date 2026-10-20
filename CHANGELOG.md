@@ -14,9 +14,6 @@
 - The editor and the layout constants come from the `artisan-uml` package only: the lookup for a bundled `editor-dist/` copy (never produced by anything) is gone.
 - `pnpm-workspace.yaml`: `minimumReleaseAgeExclude` excludes our own `artisan-uml` by name, so a fresh editor release is installable right away instead of waiting out the 24 h age gate.
 
-### Release order
-- `artisan-uml@1.2.2` has to be on npm before this release. After it is published: run `pnpm install` in this repo and commit the refreshed `pnpm-lock.yaml`.
-
 ## 0.5.0 — 18.10.2026
 
 ### Added
