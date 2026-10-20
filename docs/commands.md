@@ -1,5 +1,9 @@
 # Commands
 
+> **Language support:** the scanner speaks C# only today (Unity-friendly).
+> A second language plugs into the shared extractor `lib/extract.mjs` — see the
+> README's *Supported languages*.
+
 ```bash
 artuml help          # overview
 artuml help <cmd>    # detailed help for one command
@@ -9,15 +13,15 @@ artuml help <cmd>    # detailed help for one command
 
 | Command | What it does |
 | --- | --- |
-| `artuml scan` | Parse C# → `.artisan/diagram.json` + `diagram.puml` + single-file `diagram.html`. Re-scan keeps positions and notes. |
-| `artuml diff [--json]` | Human diagram changes → markdown report for the agent (renames detected, removals ask). Consumes them. |
+| `artuml scan` | Parse C# → `.artisan/diagram.json` + `diagram.puml` + single-file `diagram.html`. Re-scan keeps positions and notes. Seeds `.artisan/config.json` with defaults if absent. |
+| `artuml diff [--json] [--peek]` | Human diagram changes → markdown report for the agent (renames detected, removals ask). Consumes them. `--peek` reports **without** consuming — for look-only checks (`status` does this internally). |
 | `artuml impl-diff [--src DIR] [--json]` | Diagram vs code, read-only: diagram items missing from the code, code drift not in the diagram, signature mismatches. Marks nothing seen — run it after `diff` in `/artisan-implement` to catch anything acked or scanned out-of-band. Writes `.artisan/impl-diff.json` so the editor can show its "Code out of sync" badge. |
-| `artuml mark-ai` | After agent edits to `diagram.json`: record as pending (amber in editor). |
+| `artuml mark-ai` | After agent edits to `diagram.json`: merge them into pending as new refs (existing unacknowledged refs are kept) — amber in editor. |
 | `artuml ack` | Mark pending agent changes as seen by the human. |
-| `artuml status` | Diagram size, pending changes in both directions. |
+| `artuml status` | Diagram size, pending changes in both directions — plus, when human changes exist, the actual change report as a non-consuming peek. |
 | `artuml help [<cmd>]` | Help overview, or detailed help for one command. |
 | `artuml editor` | Open the editor app in your browser (`app` alias). |
-| `artuml serve [--port N]` | Optional localhost server: live autosave + pending API. |
+| `artuml serve [--port N]` | Optional localhost server: live autosave + pending API. With `autoServe: true` in config, every command starts it on demand. |
 
 ## Editing from the terminal
 
@@ -69,3 +73,15 @@ member name is ambiguous (attribute + method with the same name).
 Notes bind your agent: on classes, members and relations (via the editor or
 `--note`), plus project-level notes (the editor's **Notes** button). `diff`
 surfaces all of them in the report, and scan/plantUML keep them.
+
+## Config
+
+Optional settings live in two places — the project file wins:
+
+1. `.artisan/config.json` (per project; `scan` seeds it with the defaults)
+2. `~/.config/artuml/config.json` (global fallback)
+
+| Key | Default | Meaning |
+| --- | --- | --- |
+| `askBeforeRemove` | `true` | The `/artisan-scaffold` + `/artisan-implement` skills list all removals and ask once before deleting. `false` = remove without asking. |
+| `autoServe` | `false` | Every `artuml` command then ensures `artuml serve` is running (probes `localhost:4173/api/status`, starts it if absent). |

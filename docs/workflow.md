@@ -39,17 +39,20 @@ markdown report:
 - **Notes** — project, class, member and relation notes, binding for the agent.
 
 Running `diff` consumes the changes (marks them seen), so it reports each change
-once.
+once. `diff --peek` reports without consuming — and `artuml status` embeds such
+a peek whenever human changes are waiting.
 
 ## 4. The agent implements
 
 Refactors renames, scaffolds new code, writes bodies per your notes. The agent
 packs (`/artisan-scaffold`, `/artisan-implement`, …) run `diff` themselves and
-follow these rules.
+follow these rules. Removals are collected and asked about in one prompt —
+gated by the `askBeforeRemove` config (see `docs/commands.md`).
 
 ## 5. `artuml mark-ai` — agent changes back to you
 
-When an *agent* restructures the diagram (edits `diagram.json`, then):
+When an *agent* restructures the diagram — preferably via `artuml add/edit/remove`
+(direct `diagram.json` edits are a last resort), then:
 
 ```bash
 artuml mark-ai
@@ -57,7 +60,8 @@ artuml mark-ai
 
 its changes become **pending**: shown amber in the editor with a **Mark seen**
 button until you acknowledge them (`artuml ack` or the button). You always see
-what the agent did to your architecture.
+what the agent did to your architecture. `mark-ai` merges new refs into
+`pending.json` — it never clobbers unacknowledged changes.
 
 ## 6. `artuml status`
 
@@ -65,7 +69,8 @@ what the agent did to your architecture.
 artuml status
 ```
 
-Diagram size, unseen human changes and pending agent changes at a glance.
+Diagram size, unseen human changes and pending agent changes at a glance —
+including the actual human change report (non-consuming peek).
 
 ## The loop
 

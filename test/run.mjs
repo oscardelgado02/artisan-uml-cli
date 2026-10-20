@@ -190,6 +190,23 @@ ok('map.json type → file');
 assert.ok(fs.existsSync('.artisan/last-ai.json') && fs.existsSync('.artisan/last-human.json') && fs.existsSync('.artisan/pending.json'));
 ok('snapshots initialized');
 
+// config: scan seeds project defaults; project overrides global
+const cfg = JSON.parse(fs.readFileSync('.artisan/config.json', 'utf8'));
+assert.equal(cfg.askBeforeRemove, true, 'scan seeds askBeforeRemove default');
+assert.equal(cfg.autoServe, false, 'scan seeds autoServe default');
+ok('scan writes .artisan/config.json defaults');
+const { loadConfig } = await import('../lib/config.mjs');
+assert.equal(loadConfig().askBeforeRemove, true, 'loadConfig falls back to defaults');
+const globalCfgPath = path.join(os.homedir(), '.config/artuml/config.json');
+fs.mkdirSync(path.dirname(globalCfgPath), { recursive: true });
+fs.writeFileSync(globalCfgPath, JSON.stringify({ askBeforeRemove: false }));
+fs.writeFileSync('.artisan/config.json', JSON.stringify({ askBeforeRemove: true }));
+assert.equal(loadConfig().askBeforeRemove, true, 'project wins over global');
+fs.writeFileSync('.artisan/config.json', JSON.stringify({}));
+assert.equal(loadConfig().askBeforeRemove, false, 'global applies when project silent');
+fs.rmSync(globalCfgPath, { force: true });
+ok('config precedence: project > global > defaults');
+
 // diff command: consume a human edit
 const cur = JSON.parse(fs.readFileSync('.artisan/diagram.json', 'utf8'));
 cur.nodes[0].note = 'root of all creatures';
@@ -203,14 +220,37 @@ assert.equal(afterAi.nodes[0].note, 'root of all creatures');
 ok('artuml diff consumed human changes');
 const lastAi1 = JSON.parse(fs.readFileSync('.artisan/last-ai.json', 'utf8'));
 
+// diff --peek: reports without consuming
+cur.nodes[0].note = 'peeked but not consumed';
+fs.writeFileSync('.artisan/diagram.json', JSON.stringify(cur));
+runDiff({ peek: true });
+const afterPeek = JSON.parse(fs.readFileSync('.artisan/last-ai.json', 'utf8'));
+assert.equal(afterPeek.nodes[0].note, 'root of all creatures', 'peek did not advance last-ai');
+const peekDiff = runDiff({ peek: true });
+const peekTotal = peekDiff.renames.length + peekDiff.added.length + peekDiff.removed.length + peekDiff.modified.length + peekDiff.notes.length;
+assert.equal(peekTotal, 1, 'peek reports the waiting change');
+ok('artuml diff --peek reports without consuming');
+runDiff({});
+const consumed = JSON.parse(fs.readFileSync('.artisan/last-ai.json', 'utf8'));
+assert.equal(consumed.nodes[0].note, 'peeked but not consumed', 'consuming diff advances last-ai');
+ok('consuming diff still advances baseline');
+
 // mark-ai: AI edits diagram, pending refs appear
 cur.nodes.push({ id: 'cNew', kind: 'class', name: 'QuestGiver', x: 0, y: 0, attributes: [], methods: [{ id: 'q1', vis: '+', name: 'Give', type: 'void', mods: [], params: '' }] });
 fs.writeFileSync('.artisan/diagram.json', JSON.stringify(cur));
+// human CLI-edit ref waiting on ack must survive mark-ai (merge, not overwrite)
+const humanRef = { type: 'node', id: 'cHuman', change: 'modified', summary: 'human CLI edit not yet acked' };
+fs.writeFileSync('.artisan/pending.json', JSON.stringify([humanRef]));
 const { markAi } = await import('../lib/diff.mjs');
 markAi();
 const pending = JSON.parse(fs.readFileSync('.artisan/pending.json', 'utf8'));
 assert.ok(pending.some((p) => p.type === 'node' && p.change === 'added' && p.summary.includes('QuestGiver')), 'pending node ref');
+assert.ok(pending.some((p) => p.id === 'cHuman'), 'mark-ai merged, did not clobber human ref');
 ok('artuml mark-ai recorded AI change for human');
+markAi(); // idempotent second run — no duplicate refs
+const pending1b = JSON.parse(fs.readFileSync('.artisan/pending.json', 'utf8'));
+assert.equal(pending1b.filter((p) => p.type === 'node' && p.id === 'cNew').length, 1, 'mark-ai dedup by key');
+ok('mark-ai re-run does not duplicate refs');
 
 const { runAck } = await import('../lib/diff.mjs');
 runAck();
@@ -228,7 +268,7 @@ fs.writeFileSync('.artisan/diagram.json', JSON.stringify(cur));
 runScan({ src: '.', lang: 'csharp' });
 const rescan = JSON.parse(fs.readFileSync('.artisan/diagram.json', 'utf8'));
 const kept = rescan.nodes.find((n) => n.name === 'Animal');
-assert.equal(kept.note, 'root of all creatures', 'note survived rescan');
+assert.equal(kept.note, 'peeked but not consumed', 'note survived rescan');
 assert.equal(kept.x, 777, 'position survived rescan');
 ok('rescan preserves human notes + positions');
 
