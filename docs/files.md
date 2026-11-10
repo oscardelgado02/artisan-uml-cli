@@ -10,11 +10,12 @@ re-scans, so committing keeps that history.
 | `diagram.html` | the editor as ONE self-contained file (double-click to open) |
 | `diagram.puml` | PlantUML mirror — what agents read |
 | `map.json` | type → source file / namespace (so reports can point at code) |
+| `impl-diff.json` | last `artuml impl-diff` result — `artuml scaffold` consumes and refreshes it; never touches `last-ai.json`/`pending.json` |
 | `last-ai.json` | snapshot the agent last consumed (baseline for `diff`) |
 | `last-human.json` | snapshot the human last acknowledged (baseline for `mark-ai`) |
 | `pending.json` | agent changes the human has not seen yet (amber highlights) |
 | `changelog.json` | append-only history of changes and acks |
-| `config.json` | settings — `askBeforeRemove`, `autoServe` (see `docs/commands.md`); optional, overrides the global `~/.config/artuml/config.json` |
+| `config.json` | settings — `askBeforeRemove`, `autoServe`, `scaffoldDir`, `stubBody` (see `docs/commands.md`); optional, overrides the global `~/.config/artuml/config.json` |
 | `editor/` | bundled editor assets (inlined into `diagram.html`) |
 
 ## Diagram shape
@@ -39,6 +40,7 @@ interface UmlNode {
   x: number | null; y: number | null;
   attributes: Member[]; methods: Member[];
   note?: string;
+  dir?: string;     // project-root-relative directory `scaffold` creates/moves the class file in
 }
 
 interface UmlEdge {

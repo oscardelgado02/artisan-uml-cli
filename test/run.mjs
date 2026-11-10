@@ -563,6 +563,115 @@ const happy = implDiff({ src: '.' });
 assert.ok(formatImplReport(happy.res, happy.map).startsWith('Implementation matches the diagram.'), 'aligned state reports match');
 ok('aligned diagram + code → clean report');
 
+// ------------------------------------------------------------- scaffold
+section('Scaffold engine');
+const { runScaffold } = await import('../lib/scaffold.mjs');
+const { normalizeProjectDir, setConfigKey } = await import('../lib/config.mjs');
+
+const scafRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'artisan-scaf-'));
+fs.mkdirSync(path.join(scafRoot, 'src'), { recursive: true });
+process.chdir(scafRoot);
+fs.writeFileSync('src/Animal.cs', 'namespace Z {\n  public abstract class Animal {\n    public abstract void Speak();\n  }\n}\n');
+fs.writeFileSync('src/Dog.cs', 'namespace Z {\n  public class Dog {\n    public void Bark() { }\n  }\n}\n');
+runScan({ src: '.', lang: 'csharp' });
+
+// code drift before first scaffold: code-only class Extra, code-only member livesLeft on Dog
+fs.writeFileSync('src/Dog.cs', 'namespace Z {\n  public class Dog {\n    public int livesLeft;\n    public void Bark() { }\n  }\n}\n');
+fs.writeFileSync('src/Extra.cs', 'namespace Z {\n  public class Extra {\n    public int Tag;\n  }\n}\n');
+
+// diagram asks for: new class Shelter in lib/ with members, a relation, class rename Dog→Doggo, new method Fetch on Doggo, param patch on Animal.Speak
+runAdd(['node', 'Shelter', '--dir', 'lib']);
+runAdd(['member', 'Shelter', 'attribute', 'residents', '--type', 'List<Animal>', '--vis', '-']);
+runAdd(['member', 'Shelter', 'method', 'Feed', '--type', 'void', '--params', 'food: string', '--note', 'kibble only']);
+runAdd(['edge', 'Shelter', 'Animal', '--kind', 'aggregation']);
+runEdit(['node', 'Dog', '--name', 'Doggo']);
+runAdd(['member', 'Doggo', 'method', 'Fetch', '--type', 'void', '--params', 'ball: string']);
+runEdit(['member', 'Animal', 'Speak', '--params', 'mood: string']);
+assert.throws(() => runAdd(['node', 'Bogus', '--dir', '..']), 'invalid dir rejected at add time');
+ok('diagram edits staged: rename, dir, param drift, code drift');
+
+// scaffold #1: non-TTY → removals skipped+listed
+const out1 = await runScaffold({ src: '.', yes: false });
+assert.ok(fs.existsSync('lib/Shelter.cs'), 'stub created in node.dir lib/');
+const shelterCs = fs.readFileSync('lib/Shelter.cs', 'utf8');
+assert.ok(!shelterCs.includes('namespace'), 'no sibling in lib/ → namespace omitted');
+assert.ok(shelterCs.includes('public class Shelter'), 'class keyword from kind');
+assert.ok(shelterCs.includes('private List<Animal> residents;'), 'attribute spliced with vis');
+assert.ok(shelterCs.includes('public void Feed(string food)'), 'method spliced with params');
+assert.ok(shelterCs.includes('// NOTE: kibble only'), 'member note rendered');
+assert.ok(shelterCs.includes('NotImplementedException'), 'default stubBody=throw');
+ok('created: stub class file with members from node.dir');
+assert.ok(fs.existsSync('src/Doggo.cs') && !fs.existsSync('src/Dog.cs'), 'renamed file on disk (sole type)');
+const doggoCs = fs.readFileSync('src/Doggo.cs', 'utf8');
+assert.ok(doggoCs.includes('class Doggo'), 'declaration renamed');
+assert.ok(doggoCs.includes('public void Fetch(string ball)') && doggoCs.includes('throw'), 'diagram-only method spliced into renamed file');
+ok('renames: class rename applied silently (declaration + file)');
+assert.ok(fs.readFileSync('src/Animal.cs', 'utf8').includes('public abstract void Speak(string mood);'), 'signature patched to diagram');
+assert.equal(out1.renamed.length, 1, 'one rename entry');
+assert.equal(out1.patched.length, 1, 'one patched sig');
+assert.equal(out1.moved.length, 0, 'no moves');
+assert.equal(out1.removed.length, 0, 'removals declined in non-TTY');
+assert.ok(out1.agent.some((s) => s.includes('relation')), 'diagram-only relation reported for agent');
+assert.equal(out1.agent.filter((s) => s.includes('kept (removal declined)')).length, 2, 'declined removals listed: Extra + livesLeft');
+const idj = readJSON('.artisan/impl-diff.json');
+assert.equal(idj.counts.drift, 3, 'refreshed impl-diff.json counts drift (Extra + its Tag + livesLeft)');
+assert.equal(idj.counts.missing, 0, 'nothing missing: residents field edge adopts the aggregation relation');
+assert.ok(!fs.existsSync('.artisan/last-ai.json.changed'), 'impl-diff.json written, lantern untouched');
+ok('scaffold run #1: create/rename/patch + gate + snapshot refresh');
+
+// stubBody config
+assert.throws(() => setConfigKey('stubBody', 'bogus'), 'invalid stubBody rejected');
+assert.equal(setConfigKey('stubBody', 'empty'), 'empty', 'valid stubBody stored');
+
+// scaffold #2: new diagram-only class Warden in src (sibling namespace picked up)
+runAdd(['node', 'Warden', '--dir', 'src']);
+runAdd(['member', 'Warden', 'method', 'Guard', '--type', 'void']);
+await runScaffold({ src: '.', yes: false });
+const wardenCs = fs.readFileSync('src/Warden.cs', 'utf8');
+assert.ok(wardenCs.includes('namespace Z'), 'placement dir nsByDir: sibling namespace inlined');
+assert.ok(wardenCs.includes('public class Warden'), 'stub class rendered');
+assert.ok(wardenCs.includes('public void Guard() { }'), 'stubBody=empty honored on second run');
+const shelterAgain = fs.readFileSync('lib/Shelter.cs', 'utf8');
+assert.ok(shelterAgain.includes('NotImplementedException'), 'stub body from first run untouched (existing file not rewritten)');
+ok('stubBody config: new class uses empty body, sibling namespace honored');
+
+// scaffold #3: --yes applies removals
+const out3 = await runScaffold({ src: '.', yes: true });
+assert.ok(!fs.existsSync('src/Extra.cs'), 'code-only class file deleted with --yes');
+assert.ok(!fs.readFileSync('src/Doggo.cs', 'utf8').includes('livesLeft'), 'code-only member spliced out with --yes');
+assert.ok(out3.removed.some((s) => s.includes('Extra')) && out3.removed.some((s) => s.includes('livesLeft')), 'removals reported');
+ok('removals: gated removal applies with --yes (file delete + member splice)');
+
+// moves: node.dir change relocates a sole-type file
+runEdit(['node', 'Animal', '--dir', 'src/Mammals']);
+const out4 = await runScaffold({ src: '.', yes: true });
+assert.ok(fs.existsSync('src/Mammals/Animal.cs') && !fs.existsSync('src/Animal.cs'), 'class moved to new dir');
+assert.ok(out4.moved.some((s) => s.includes('src/Animal.cs → src/Mammals/Animal.cs')), 'move reported');
+ok('moves: sole-type file follows node.dir');
+
+// dir survives a scan round-trip (mergeOld) + scan seeds dir from map
+runScan({ src: '.', lang: 'csharp' });
+const diagramAfter = normalizeDiagram(readJSON('.artisan/diagram.json'));
+const am = diagramAfter.nodes.find((n) => n.name === 'Animal');
+const sm = diagramAfter.nodes.find((n) => n.name === 'Shelter');
+const wm = diagramAfter.nodes.find((n) => n.name === 'Warden');
+assert.equal(am.dir, 'src/Mammals', 'dir survives mergeOld on rescan');
+assert.equal(sm.dir, 'lib', 'scan seeds node.dir from code location');
+assert.equal(wm.dir, 'src', 'scan seeds node.dir from code location (created stub)');
+ok('dir field: mergeOld + scan seeding round-trip');
+
+// normalizeProjectDir unit checks
+assert.equal(normalizeProjectDir('src/Sub'), 'src/Sub', 'relative kept');
+assert.equal(normalizeProjectDir(path.join(scafRoot, 'src', 'Sub')), 'src/Sub', 'absolute inside root → rel');
+assert.equal(normalizeProjectDir(''), '', 'empty allowed');
+assert.equal(normalizeProjectDir('.'), '.', 'root marker equal');
+assert.throws(() => normalizeProjectDir(path.join(path.dirname(scafRoot), 'other')), 'outside-root rejected');
+assert.throws(() => normalizeProjectDir('../escape'), 'parent escape rejected');
+ok('normalizeProjectDir: rel/abs/escape rules');
+
+process.chdir('/');
+fs.rmSync(scafRoot, { recursive: true, force: true });
+
 process.chdir('/');
 fs.rmSync(tmp, { recursive: true, force: true });
 fs.rmSync(addRoot, { recursive: true, force: true });

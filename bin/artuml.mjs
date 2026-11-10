@@ -5,10 +5,11 @@ import { runScan } from '../lib/scan.mjs';
 import { runServe, ensureServeRunning } from '../lib/serve.mjs';
 import { runDiff, markAi, runAck, runReject, runStatus } from '../lib/diff.mjs';
 import { runImplDiff } from '../lib/impldiff.mjs';
+import { runScaffold } from '../lib/scaffold.mjs';
 import { runAdd, runEdit, runRemove, runEditor } from '../lib/edit.mjs';
 import { artisanDir, readJSON } from '../lib/store.mjs';
 import { assertEditorContract } from '../lib/contract.mjs';
-import { loadConfig } from '../lib/config.mjs';
+import { loadConfig, setConfigKey } from '../lib/config.mjs';
 import { readFileSync } from 'node:fs';
 
 const HELP = `artuml — human-first class diagrams for agentic coding
@@ -37,6 +38,13 @@ Commands:
                                         just that change; no keys restores the last
                                         human state and clears everything.
   status                                Show unseen human changes / pending AI changes.
+  scaffold [--src DIR] [--json] [--yes] Make the code match the diagram, mechanically:
+                                        create stub classes/members, patch signatures,
+                                        apply renames, move files to their diagrammed
+                                        directory, and (gated) remove code the diagram
+                                        dropped. Leftovers are listed for the agent.
+  config  <key> <value>                 Get/set a setting: askBeforeRemove, autoServe,
+                                        scaffoldDir, stubBody (throw|empty|todo).
   add     node|member|edge ...          Edit the diagram from the terminal:
                                           add node <Name> [--kind class] [--x N --y N] [--note "..."]
                                           add member <Class> <attribute|method|value> <Name>
@@ -70,8 +78,8 @@ Files under .artisan/:
   last-human.json snapshot the human last acknowledged
   pending.json   AI changes the human has not seen yet
   changelog.json append-only history of changes and acks
-  config.json    settings (askBeforeRemove, autoServe) — optional, overrides
-                 the global ~/.config/artuml/config.json
+  config.json    settings (askBeforeRemove, autoServe, scaffoldDir, stubBody) —
+                 optional, overrides the global ~/.config/artuml/config.json
 
 Environment:
   ARTISAN_EDITOR   path to a built editor (dist/) to copy on scan
@@ -123,7 +131,7 @@ const TOPICS = {
   add: `artuml add <node|member|edge> ...
 
   add node <Name> [--kind class|abstract|interface|enum|record|struct]
-                 [--x N --y N] [--note "..."]
+                 [--x N --y N] [--note "..."] [--dir src/Sub]
   add member <Class> <attribute|method|value> <Name>
              [--type T] [--params P] [--vis +|-|#|~]
              [--mods static,abstract,...] [--note "..."]
@@ -135,6 +143,7 @@ const TOPICS = {
   edit: `artuml edit <node|member|edge> ...
 
   edit node <Name> [--name New] [--kind K] [--x N --y N] [--note "..."]
+                   [--dir src/Sub | --dir]   (scaffold placement; bare --dir clears)
   edit member <Class> <Name> [--name New] [--type T] [--params P]
               [--vis +] [--mods static,abstract] [--note "..."]
   edit edge <From> <To> [--kind K] [--new-kind K] [--label L]
@@ -155,6 +164,39 @@ const TOPICS = {
   Open the Artisan UML editor app (bundled from the artisan-uml
   package) in your browser. Creates .artisan/diagram.json if none
   exists yet.`,
+  scaffold: `artuml scaffold [--src DIR] [--json] [--yes]
+
+  Make the code match the diagram — mechanically, from the same
+  impl-diff result \`artuml impl-diff\` reports:
+
+    - diagram items missing from the code → stub class files and
+      spliced members (bodies per stubBody config; notes become
+      // NOTE: comments; unspecified types become object)
+    - signature mismatches → patched to the diagram's version
+      (bodies kept; unspecified diagram types keep the code's)
+    - detected renames → applied silently (declaration, file when
+      sole-type, identifiers in that file)
+    - node --dir placement → sole-type files moved there silently
+      (namespace NOT rewritten — check for drift)
+    - code the diagram dropped → REMOVED, but gated: one y/n prompt
+      (skip with --yes; silent when askBeforeRemove is false;
+      non-interactive sessions skip and list)
+
+  Leftovers are listed under "For the agent": method bodies,
+  call-site refactors outside touched files, drift adoption.
+  Never touches last-ai/pending; refreshes impl-diff.json.
+  Placement: node --dir > config scaffoldDir > --src root.`,
+  config: `artuml config <key> <value>
+
+  Get/set project settings (.artisan/config.json):
+    askBeforeRemove  true|false   prompt before code removals (scaffold)
+    autoServe        true|false   every command ensures the editor server
+    scaffoldDir      <dir>        fallback directory for scaffold creations
+                                  ('' = the scan root; --dir beats it)
+    stubBody         throw|empty|todo   stub method bodies (default throw =
+                                  throw new NotImplementedException())
+
+  Bare \`artuml config <key>\` shows the value; \`artuml config\` shows all.`,
 };
 
 function fail(msg) {
@@ -179,7 +221,7 @@ for (let i = 0; i < rest.length; i++) {
 
 // autoServe: config opt-in — every artuml command makes sure the editor server
 // is up so diagram.html + serve stay in sync without a separate step.
-const AUTO_SERVE_CMDS = new Set(['scan', 'diff', 'impl-diff', 'mark-ai', 'ack', 'reject', 'status', 'add', 'edit', 'remove', 'rm']);
+const AUTO_SERVE_CMDS = new Set(['scan', 'diff', 'impl-diff', 'mark-ai', 'ack', 'reject', 'status', 'add', 'edit', 'remove', 'rm', 'scaffold']);
 if (AUTO_SERVE_CMDS.has(cmd) && loadConfig().autoServe) {
   await ensureServeRunning();
 }
@@ -221,6 +263,24 @@ switch (cmd) {
   case 'status':
     runStatus();
     break;
+  case 'scaffold':
+    if (!readJSON(artisanDir('diagram.json'))) fail('No .artisan/diagram.json — run `artuml scan` first.');
+    await runScaffold({ src: typeof args.src === 'string' ? args.src : '.', json: !!args.json, yes: !!args.yes });
+    break;
+  case 'config': {
+    const [key, value] = rest;
+    try {
+      if (!key) console.log(JSON.stringify(loadConfig(), null, 2));
+      else if (value === undefined) {
+        const cur = loadConfig()[key];
+        if (cur === undefined) throw new Error(`Unknown config key "${key}" — one of: ${Object.keys(loadConfig()).join(', ')}`);
+        console.log(typeof cur === 'boolean' ? String(cur) : String(cur));
+      } else console.log(`${key} = ${setConfigKey(key, value)}`);
+    } catch (e) {
+      fail(e.message);
+    }
+    break;
+  }
   case 'add':
     try {
       runAdd(rest);

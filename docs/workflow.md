@@ -42,14 +42,37 @@ Running `diff` consumes the changes (marks them seen), so it reports each change
 once. `diff --peek` reports without consuming — and `artuml status` embeds such
 a peek whenever human changes are waiting.
 
-## 4. The agent implements
+## 4. `artuml scaffold` — the mechanical work, for free
 
-Refactors renames, scaffolds new code, writes bodies per your notes. The agent
-packs (`/artisan-scaffold`, `/artisan-implement`, …) run `diff` themselves and
-follow these rules. Removals are collected and asked about in one prompt —
-gated by the `askBeforeRemove` config (see `docs/commands.md`).
+```bash
+artuml scaffold [--src DIR] [--yes]
+```
 
-## 5. `artuml mark-ai` — agent changes back to you
+Applies `impl-diff` directly to your code: creates stub class files for removed
+diagram items, splices new members into existing files, patches modified
+signatures, applies renames (files, declarations and identifiers), and moves
+files whose class got a new `dir` (set per node via `artuml edit node
+<Name> --dir src/Combat`, the editor's *Set directory…*, or `scaffoldDir` in
+config). Generated bodies follow `stubBody` (`throw` →
+`NotImplementedException`, `empty`, `todo`); notes land as `// NOTE:` comments;
+namespaces are taken from a same-directory sibling or omitted.
+
+Removals (classes that exist in code but not in the diagram) are never silent:
+one y/n prompt lists them, `--yes` pre-answers it, and `askBeforeRemove: false`
+skips it. Renames refactored outside the renamed file, declined removals and
+planned relations are listed under *For the agent* — judgement stays with the
+agent, not the tool. Then `impl-diff.json` is refreshed from the new source.
+
+## 5. The agent implements
+
+Refactors remaining call sites after a rename, writes real bodies into the
+stubs per your notes, reviews any code drift `diff` didn't know about. The
+agent packs (`/artisan-scaffold`, `/artisan-implement`, …) run `diff` and
+`scaffold` themselves and follow these rules. Removals are collected and asked
+about in one prompt — gated by the `askBeforeRemove` config (see
+`docs/commands.md`).
+
+## 6. `artuml mark-ai` — agent changes back to you
 
 When an *agent* restructures the diagram — preferably via `artuml add/edit/remove`
 (direct `diagram.json` edits are a last resort), then:
@@ -63,7 +86,7 @@ button until you acknowledge them (`artuml ack` or the button). You always see
 what the agent did to your architecture. `mark-ai` merges new refs into
 `pending.json` — it never clobbers unacknowledged changes.
 
-## 6. `artuml status`
+## 7. `artuml status`
 
 ```bash
 artuml status
@@ -74,5 +97,5 @@ including the actual human change report (non-consuming peek).
 
 ## The loop
 
-`scan` → you edit → `diff` → agent implements → `mark-ai` → you ack → repeat.
-`changelog.json` keeps the full history of who changed what.
+`scan` → you edit → `diff` → `scaffold` → agent implements → `mark-ai` → you
+ack → repeat. `changelog.json` keeps the full history of who changed what.

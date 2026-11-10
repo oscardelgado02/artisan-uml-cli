@@ -16,6 +16,8 @@ artuml help <cmd>    # detailed help for one command
 | `artuml scan` | Parse C# → `.artisan/diagram.json` + `diagram.puml` + single-file `diagram.html`. Re-scan keeps positions and notes. Seeds `.artisan/config.json` with defaults if absent. |
 | `artuml diff [--json] [--peek]` | Human diagram changes → markdown report for the agent (renames detected, removals ask). Consumes them. `--peek` reports **without** consuming — for look-only checks (`status` does this internally). |
 | `artuml impl-diff [--src DIR] [--json]` | Diagram vs code, read-only: diagram items missing from the code, code drift not in the diagram, signature mismatches. Marks nothing seen — run it after `diff` in `/artisan-implement` to catch anything acked or scanned out-of-band. Writes `.artisan/impl-diff.json` so the editor can show its "Code out of sync" badge. |
+| `artuml scaffold [--src DIR] [--json] [--yes]` | Apply the impl-diff result to the code: create stub files/members for diagrammed-but-missing items, patch signature mismatches, apply renames silently, move files when a node's `dir` changed (sole-type files only). Removals (code not in the diagram) are gated behind one `y/n` prompt — `--yes` skips it; non-interactive shells remove nothing and list candidates. Refreshes `impl-diff.json`, so the editor badge clears. |
+| `artuml config [key] [value]` | Read config (no args: everything; one key: its value) or set `artuml config <key> <value>` — validated and written to the project file. Also `artuml help config`. |
 | `artuml mark-ai` | After agent edits to `diagram.json`: merge them into pending as new refs (existing unacknowledged refs are kept) — amber in editor. |
 | `artuml ack` | Mark pending agent changes as seen by the human. |
 | `artuml status` | Diagram size, pending changes in both directions — plus, when human changes exist, the actual change report as a non-consuming peek. |
@@ -31,7 +33,7 @@ These are **human edits** — the agent picks them up via `artuml diff`.
 
 ```bash
 artuml add node <Name> [--kind class|abstract|interface|enum|record|struct]
-              [--x N --y N] [--note "..."]
+              [--x N --y N] [--note "..."] [--dir PATH]
 artuml add member <Class> <attribute|method|value> <Name>
               [--type T] [--params P] [--vis +|-|#|~]
               [--mods static,abstract,...] [--note "..."]
@@ -47,6 +49,7 @@ classes, duplicate relations and enum values on non-enums are rejected.
 
 ```bash
 artuml edit node <Name> [--name New] [--kind K] [--x N --y N] [--note "..."]
+               [--dir PATH]
 artuml edit member <Class> <Name> [--name New] [--type T] [--params P]
               [--vis +] [--mods static,abstract] [--note "..."]
 artuml edit edge <From> <To> [--kind K] [--new-kind K] [--label L]
@@ -55,7 +58,11 @@ artuml edit edge <From> <To> [--kind K] [--new-kind K] [--label L]
 
 `--name` keeps the item id — `diff` reports it as a rename. `--note` alone (a
 bare flag) clears the note; `--label-off` clears a relation label. When a pair
-of classes has several relations, select with `--kind`.
+of classes has several relations, select with `--kind`. `--dir` sets a node's
+directory (project-root-relative, e.g. `src/Combat`) — `artuml scaffold`
+creates/moves that type's file there; `--dir` alone clears it. The editor has
+the same control: right-click a class → **Set directory…**, and the toolbar
+**Dir** button sets the project default.
 
 ### Remove
 
@@ -81,7 +88,13 @@ Optional settings live in two places — the project file wins:
 1. `.artisan/config.json` (per project; `scan` seeds it with the defaults)
 2. `~/.config/artuml/config.json` (global fallback)
 
+Read or write them without an editor via `artuml config`:
+`artuml config` prints everything, `artuml config stubBody` prints one key,
+`artuml config stubBody empty` sets it (validated).
+
 | Key | Default | Meaning |
 | --- | --- | --- |
-| `askBeforeRemove` | `true` | The `/artisan-scaffold` + `/artisan-implement` skills list all removals and ask once before deleting. `false` = remove without asking. |
+| `askBeforeRemove` | `true` | `artuml scaffold` prompts once before removing code the diagram no longer declares. `false` = remove without asking. |
 | `autoServe` | `false` | Every `artuml` command then ensures `artuml serve` is running (probes `localhost:4173/api/status`, starts it if absent). |
+| `scaffoldDir` | *(src root)* | Default directory for class files `artuml scaffold` creates — seeded by `scan` to the `--src` root. Per-node `dir` overrides it for that type. |
+| `stubBody` | `"throw"` | Method stub bodies scaffold writes: `"throw"` = `throw new NotImplementedException();`, `"empty"` = `{ }`, `"todo"` = body with a `// TODO: scaffold` comment. |

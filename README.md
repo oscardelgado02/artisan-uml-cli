@@ -77,11 +77,12 @@ without the file-handle API, or when you want the pending API.
 ### With your coding agent
 
 The main [Artisan repo](https://github.com/oscardelgado02/artisan) ships slash-command
-packs (`/artisan-scan`, `/artisan-diff`, `/artisan-implement`, `/artisan-architect`,
+packs (`/artisan-scan`, `/artisan-scaffold`, `/artisan-implement`, `/artisan-architect`,
 `/artisan-status`) for opencode, Claude Code and Codex — its `install.sh` copies them
 into your agent's command folder. Without them, any agent can still work from this
-document: run `artuml diff` and read its markdown report, edit `.artisan/diagram.json`
-and run `artuml mark-ai`.
+document: run `artuml diff`, then `artuml scaffold` for the mechanical part, write the
+real bodies into the stubs, and edit `.artisan/diagram.json` + `artuml mark-ai` after
+diagram-side work.
 
 ## The workflow
 
@@ -91,8 +92,11 @@ and run `artuml mark-ai`.
 3. **`artuml diff`** — compares the diagram against the last known state and prints a
    markdown report for your agent: *rename these*, *scaffold these*, *notes to honor*.
    Removals are never auto-deleted; the agent must ask.
-4. **The agent implements** — refactors renames, scaffolds new code, writes bodies per
-   your notes.
+4. **`artuml scaffold`** — applies that diff to the code for you: stub class files
+   (with `// NOTE:` comments and `NotImplementedException` bodies), member splices,
+   signature patches, renames and file moves — `--yes` to confirm removals
+   non-interactively. The agent then writes the real bodies and handles the
+   judgement calls the CLI lists for it.
 5. **`artuml mark-ai`** — when an *agent* restructures the diagram, its changes show up
    **amber** in the editor until you press **Mark seen** (`artuml ack`). Terminal edits
    (`add`/`edit`/`remove`) record the same refs, so they highlight and survive a reload too.
@@ -115,20 +119,22 @@ friends are skipped). More languages are welcome: the shared extractor
 | `artuml serve` | (optional) editor at `http://localhost:4173`, live autosave; picks up external `diagram.json` changes and highlights them (rev-guarded: stale tabs can't clobber newer disk state) |
 | `artuml diff [--peek]` | Human diagram edits → markdown report for the agent; consumes them (`--peek` reports without consuming) |
 | `artuml impl-diff [--src DIR] [--json]` | Diagram ↔ code comparison (read-only): diagram items missing from the code, code drift not in the diagram, signature mismatches — so the agent can sync code after acks or out-of-band scans |
+| `artuml scaffold [--src DIR] [--json] [--yes]` | Apply the impl-diff to the code: create stub class files, splice members into existing files, patch signatures, apply renames, move files to each class's `dir`, remove code the diagram dropped (one y/n prompt, `--yes` pre-answers) — refreshes `impl-diff.json` |
 | `artuml mark-ai` | Merge agent-made `diagram.json` edits into pending (amber in editor) |
 | `artuml ack [refs...]` | Human confirms AI changes seen (or the editor's ✓ chips / "Mark seen" button); with keys like `node:Wolf:removed` accepts just those |
 | `artuml reject [refs...]` | Undo pending AI changes — with keys like `node:Wolf:added` reverts exactly those (ghost-snapshot reverts); without keys restores `diagram.json` from the last human state |
 | `artuml status` | Diagram size, pending changes both directions — plus the actual human change report (non-consuming peek) |
-| `artuml add node <Name> [--kind ...] [--x --y] [--note]` | Add a class box from the terminal (auto-placed unless positioned) |
+| `artuml add node <Name> [--kind ...] [--x --y] [--note] [--dir PATH]` | Add a class box from the terminal (auto-placed unless positioned); `--dir` sets the project-root-relative folder `scaffold` creates the file in |
 | `artuml add member <Class> <attribute\|method\|value> <Name> [--type --params --vis --mods --note]` | Add members to an existing class |
 | `artuml add edge <From> <To> [--kind --label --from-mult --to-mult]` | Add a relation between two classes |
-| `artuml edit node <Name> [--name --kind --x --y --note]` | Rename / re-kind / move / note a class (renames keep the id) |
+| `artuml edit node <Name> [--name --kind --x --y --note --dir]` | Rename / re-kind / move / note a class (renames keep the id); `--dir new/path` sets, bare `--dir` clears its scaffold directory |
 | `artuml edit member <Class> <Name> [--name --type --params --vis --mods --note]` | Update an existing member |
 | `artuml edit edge <From> <To> [--kind --new-kind --label --from-mult --to-mult]` | Update a relation (`--label-off` clears the label) |
 | `artuml remove node <Name>` | Delete a class (its relations cascade) |
 | `artuml remove member <Class> <Name> [--kind]` / `remove edge <From> <To> [--kind]` | Delete a member or relation |
 | `artuml editor` | Open the Artisan UML editor app (bundled from the `artisan-uml` package) — creates `.artisan/` with an empty diagram if none exists |
 | `artuml help [command]` | Overview or detailed help for one command |
+| `artuml config [key] [value]` | Read (or, with a value, set) a config key — `askBeforeRemove`, `autoServe`, `scaffoldDir`, `stubBody`; validates and writes `.artisan/config.json` |
 
 Scan skips `Library/`, `obj/`, `bin/`, `Temp/`, `Logs/`, `Packages/`, `Editor/` —
 Unity-aware out of the box.
@@ -157,6 +163,7 @@ Everything the CLI knows lives here, next to your project:
 | `diagram.json` | source of truth (nodes, edges, notes, positions) |
 | `diagram.puml` | PlantUML mirror — what agents read |
 | `map.json` | type → source file |
+| `impl-diff.json` | last impl-diff result (`scaffold` consumes/refreshes it) |
 | `last-ai.json` / `last-human.json` | change-tracking baselines |
 | `pending.json` | Changes the human hasn't seen yet (agent `mark-ai` + terminal `add`/`edit`/`remove`) |
 | `changelog.json` | history of consumed changes |
@@ -175,7 +182,9 @@ notes and layout survive re-scans, so committing keeps that history.
 │   ├── diagram.mjs        relation detection + layered auto-layout
 │   ├── scan.mjs           the scan command: merge, snapshots, layout
 │   ├── diff.mjs           change tracking: renames, pending refs, reports
-│   ├── edit.mjs           add node/member/edge commands + `artuml editor`
+│   ├── impldiff.mjs       impl-diff: diagram ↔ code comparison (scaffold's input)
+│   ├── scaffold.mjs        `scaffold` engine: stubs, splices, renames, moves, removals
+│   ├── edit.mjs            add node/member/edge commands + `artuml editor`
 │   ├── embed.mjs          inlines the editor into the single-file diagram.html
 │   ├── serve.mjs          optional localhost server (live autosave + pending API)
 │   ├── contract.mjs       editor contract guard (see below)
@@ -210,7 +219,7 @@ pnpm test           # prepublishOnly: tests + editor check (artisan-uml must shi
 pnpm publish --access public
 ```
 
-`artisan-uml@^1.2.2` must be on npm first — it ships the built editor.
+`artisan-uml@^1.2.3` must be on npm first — it ships the built editor.
 
 ## Documentation
 
