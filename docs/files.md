@@ -11,8 +11,8 @@ re-scans, so committing keeps that history.
 | `diagram.puml` | PlantUML mirror — what agents read |
 | `map.json` | type → source file / namespace (so reports can point at code) |
 | `impl-diff.json` | last `artuml impl-diff` result — `artuml scaffold` consumes and refreshes it; never touches `last-ai.json`/`pending.json` |
-| `last-ai.json` | snapshot the agent last consumed (baseline for `diff`) |
-| `last-human.json` | snapshot the human last acknowledged (baseline for `mark-ai`) |
+| `last-ai.json` | snapshot the agent last consumed (baseline for `diff` and `mark-ai`) |
+| `last-human.json` | snapshot the human last acknowledged (baseline for `ack`/revert) |
 | `pending.json` | agent changes the human has not seen yet (amber highlights) |
 | `changelog.json` | append-only history of changes and acks |
 | `config.json` | settings — `askBeforeRemove`, `autoServe`, `scaffoldDir`, `stubBody` (see `docs/commands.md`); optional, overrides the global `~/.config/artuml/config.json` |

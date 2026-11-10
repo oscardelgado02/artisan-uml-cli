@@ -120,7 +120,7 @@ friends are skipped). More languages are welcome: the shared extractor
 | `artuml diff [--peek]` | Human diagram edits → markdown report for the agent; consumes them (`--peek` reports without consuming) |
 | `artuml impl-diff [--src DIR] [--json]` | Diagram ↔ code comparison (read-only): diagram items missing from the code, code drift not in the diagram, signature mismatches — so the agent can sync code after acks or out-of-band scans |
 | `artuml scaffold [--src DIR] [--json] [--yes]` | Apply the impl-diff to the code: create stub class files, splice members into existing files, patch signatures, apply renames, move files to each class's `dir`, remove code the diagram dropped (one y/n prompt, `--yes` pre-answers) — refreshes `impl-diff.json` |
-| `artuml mark-ai` | Merge agent-made `diagram.json` edits into pending (amber in editor) |
+| `artuml mark-ai` | Merge agent-made `diagram.json` edits into pending (amber in editor); diffs against `last-ai.json`, so human edits already consumed by `diff` are never re-queued |
 | `artuml ack [refs...]` | Human confirms AI changes seen (or the editor's ✓ chips / "Mark seen" button); with keys like `node:Wolf:removed` accepts just those |
 | `artuml reject [refs...]` | Undo pending AI changes — with keys like `node:Wolf:added` reverts exactly those (ghost-snapshot reverts); without keys restores `diagram.json` from the last human state |
 | `artuml status` | Diagram size, pending changes both directions — plus the actual human change report (non-consuming peek) |

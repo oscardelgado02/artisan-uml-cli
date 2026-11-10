@@ -252,6 +252,20 @@ const pending1b = JSON.parse(fs.readFileSync('.artisan/pending.json', 'utf8'));
 assert.equal(pending1b.filter((p) => p.type === 'node' && p.id === 'cNew').length, 1, 'mark-ai dedup by key');
 ok('mark-ai re-run does not duplicate refs');
 
+// regression: mark-ai after a consumed human edit must not queue the human's
+// own changes as pending AI refs (old last-human baseline swept them up)
+const beforePending = JSON.parse(fs.readFileSync('.artisan/pending.json', 'utf8'));
+cur.projectNotes = 'human edited in the editor';
+fs.writeFileSync('.artisan/diagram.json', JSON.stringify(cur));
+runDiff({}); // AI consumes the human edit — last-ai advances past it
+markAi();
+const pendingAfter = JSON.parse(fs.readFileSync('.artisan/pending.json', 'utf8'));
+assert.equal(pendingAfter.length, beforePending.length, 'mark-ai added no refs for consumed human edits');
+assert.ok(!pendingAfter.some((p) => p.summary?.includes('human edited in the editor')), 'human edit not misattributed as AI change');
+cur.projectNotes = 'Make it fun';
+fs.writeFileSync('.artisan/diagram.json', JSON.stringify(cur));
+ok('mark-ai does not misattribute consumed human edits');
+
 const { runAck } = await import('../lib/diff.mjs');
 runAck();
 const pending2 = JSON.parse(fs.readFileSync('.artisan/pending.json', 'utf8'));
