@@ -52,8 +52,8 @@ Applies `impl-diff` directly to your code: creates stub class files for removed
 diagram items, splices new members into existing files, patches modified
 signatures, applies renames (files, declarations and identifiers), and moves
 files whose class got a new `dir` (set per node via `artuml edit node
-<Name> --dir src/Combat`, the editor's *Set directory…*, or `scaffoldDir` in
-config). Generated bodies follow `stubBody` (`throw` →
+<Name> --dir Combat` — relative to the default dir, the editor's *Set
+directory…*, or `scaffoldDir` in config: the ROOT all files live under). Generated bodies follow `stubBody` (`throw` →
 `NotImplementedException`, `empty`, `todo`); notes land as `// NOTE:` comments;
 namespaces are taken from a same-directory sibling or omitted.
 

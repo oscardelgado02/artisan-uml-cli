@@ -59,8 +59,9 @@ artuml edit edge <From> <To> [--kind K] [--new-kind K] [--label L]
 `--name` keeps the item id — `diff` reports it as a rename. `--note` alone (a
 bare flag) clears the note; `--label-off` clears a relation label. When a pair
 of classes has several relations, select with `--kind`. `--dir` sets a node's
-directory (project-root-relative, e.g. `src/Combat`) — `artuml scaffold`
-creates/moves that type's file there; `--dir` alone clears it. The editor has
+directory relative to the default dir (the `scaffoldDir` config, else the
+`--src` root), e.g. `--dir Combat` — `artuml scaffold` creates/moves that
+type's file under `default dir/Combat`; `--dir` alone clears it. The editor has
 the same control: right-click a class → **Set directory…**, and the toolbar
 **Dir** button sets the project default.
 
@@ -96,5 +97,5 @@ Read or write them without an editor via `artuml config`:
 | --- | --- | --- |
 | `askBeforeRemove` | `true` | `artuml scaffold` prompts once before removing code the diagram no longer declares. `false` = remove without asking. |
 | `autoServe` | `false` | Every `artuml` command then ensures `artuml serve` is running (probes `localhost:4173/api/status`, starts it if absent). |
-| `scaffoldDir` | *(src root)* | Default directory for class files `artuml scaffold` creates — seeded by `scan` to the `--src` root. Per-node `dir` overrides it for that type. |
+| `scaffoldDir` | *(src root)* | The ROOT all files live under — seeded by `scan` to the `--src` root; `''` falls back to the `--src` root again. Per-node `dir` is relative to it and overrides it for that type. |
 | `stubBody` | `"throw"` | Method stub bodies scaffold writes: `"throw"` = `throw new NotImplementedException();`, `"empty"` = `{ }`, `"todo"` = body with a `// TODO: scaffold` comment. |

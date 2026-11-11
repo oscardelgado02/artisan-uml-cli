@@ -124,10 +124,10 @@ friends are skipped). More languages are welcome: the shared extractor
 | `artuml ack [refs...]` | Human confirms AI changes seen (or the editor's ✓ chips / "Mark seen" button); with keys like `node:Wolf:removed` accepts just those |
 | `artuml reject [refs...]` | Undo pending AI changes — with keys like `node:Wolf:added` reverts exactly those (ghost-snapshot reverts); without keys restores `diagram.json` from the last human state |
 | `artuml status` | Diagram size, pending changes both directions — plus the actual human change report (non-consuming peek) |
-| `artuml add node <Name> [--kind ...] [--x --y] [--note] [--dir PATH]` | Add a class box from the terminal (auto-placed unless positioned); `--dir` sets the project-root-relative folder `scaffold` creates the file in |
+| `artuml add node <Name> [--kind ...] [--x --y] [--note] [--dir PATH]` | Add a class box from the terminal (auto-placed unless positioned); `--dir` sets the folder (relative to the default dir) `scaffold` creates the file in |
 | `artuml add member <Class> <attribute\|method\|value> <Name> [--type --params --vis --mods --note]` | Add members to an existing class |
 | `artuml add edge <From> <To> [--kind --label --from-mult --to-mult]` | Add a relation between two classes |
-| `artuml edit node <Name> [--name --kind --x --y --note --dir]` | Rename / re-kind / move / note a class (renames keep the id); `--dir new/path` sets, bare `--dir` clears its scaffold directory |
+| `artuml edit node <Name> [--name --kind --x --y --note --dir]` | Rename / re-kind / move / note a class (renames keep the id); `--dir new/path` sets (relative to the default dir), bare `--dir` clears its scaffold directory |
 | `artuml edit member <Class> <Name> [--name --type --params --vis --mods --note]` | Update an existing member |
 | `artuml edit edge <From> <To> [--kind --new-kind --label --from-mult --to-mult]` | Update a relation (`--label-off` clears the label) |
 | `artuml remove node <Name>` | Delete a class (its relations cascade) |

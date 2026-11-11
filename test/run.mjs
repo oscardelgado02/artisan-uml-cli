@@ -686,6 +686,54 @@ ok('normalizeProjectDir: rel/abs/escape rules');
 process.chdir('/');
 fs.rmSync(scafRoot, { recursive: true, force: true });
 
+// ------------------------------------------- scaffold dirs relative to ROOT
+section('Scaffold dirs: default dir + per-node relative + migration');
+const dirRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'artisan-dirs-'));
+fs.mkdirSync(path.join(dirRoot, 'src'), { recursive: true });
+process.chdir(dirRoot);
+fs.writeFileSync('src/Animal.cs', 'namespace Z {\n  public abstract class Animal {\n    public abstract void Speak();\n  }\n}\n');
+fs.writeFileSync('src/Dog.cs', 'namespace Z {\n  public class Dog : Animal {\n    public override void Speak() { }\n  }\n}\n');
+fs.writeFileSync('src/Wolf.cs', 'namespace Z {\n  public class Wolf : Animal {\n    public override void Speak() { }\n  }\n}\n');
+runScan({ src: 'src', lang: 'csharp' });
+assert.equal(loadConfig().scaffoldDir, 'src', 'scan seeds scaffoldDir to the --src root');
+const seeded = normalizeDiagram(readJSON('.artisan/diagram.json'));
+assert.ok(seeded.nodes.every((n) => !n.dir), 'files directly in the src root seed no per-node dir (never ".")');
+
+// legacy project-root-relative dirs migrate: 'src' clears, '.' clears,
+// prefixed 'src/Wild' strips (disk agrees), unprefixed stays and re-resolves
+{
+  const d = readJSON('.artisan/diagram.json');
+  for (const n of d.nodes) {
+    if (n.name === 'Animal') n.dir = 'src'; // legacy == default dir → unset
+    if (n.name === 'Dog') n.dir = '.'; // legacy root marker → unset
+    if (n.name === 'Wolf') n.dir = 'src/Wild'; // legacy prefixed → 'Wild'
+  }
+  writeJSON('.artisan/diagram.json', d);
+}
+runScan({ src: 'src', lang: 'csharp' });
+const migratedDiagram = normalizeDiagram(readJSON('.artisan/diagram.json'));
+assert.ok(!migratedDiagram.nodes.find((n) => n.name === 'Animal').dir, 'legacy dir == default dir migrated to unset');
+assert.ok(!migratedDiagram.nodes.find((n) => n.name === 'Dog').dir, 'legacy "." migrated to unset');
+assert.equal(migratedDiagram.nodes.find((n) => n.name === 'Wolf').dir, 'Wild', 'legacy "src/Wild" migrated to default-dir-relative');
+assert.equal(loadConfig().scaffoldDir, 'src', 'config untouched by migration');
+
+// per-node dir resolves relative to the default dir; no dir → default dir
+runAdd(['node', 'Predator', '--dir', 'Combat']);
+assert.equal(normalizeDiagram(readJSON('.artisan/diagram.json')).nodes.find((n) => n.name === 'Predator').dir, 'Combat', '--dir stored default-dir-relative');
+const dirScaffold = await runScaffold({ src: 'src', yes: true });
+assert.ok(fs.existsSync('src/Combat/Predator.cs'), 'node dir Combat → src/Combat (relative to the default dir)');
+assert.ok(!fs.existsSync('Combat/Predator.cs'), 'no root spawn');
+runAdd(['node', 'Prey']);
+await runScaffold({ src: 'src', yes: true });
+assert.ok(fs.existsSync('src/Prey.cs'), 'no per-node dir → default dir (src), not project root');
+assert.ok(dirScaffold.moved.some((s) => s.includes('src/Wolf.cs → src/Wild/Wolf.cs')), 'legacy prefixed dir moves the file under src');
+assert.throws(() => runEdit(['node', 'Prey', '--dir', '../escape']), 'dir escaping the scaffold root rejected');
+await runScaffold({ src: 'src', yes: true });
+ok('scaffold dirs: default dir + per-node relative + migration');
+
+process.chdir('/');
+fs.rmSync(dirRoot, { recursive: true, force: true });
+
 process.chdir('/');
 fs.rmSync(tmp, { recursive: true, force: true });
 fs.rmSync(addRoot, { recursive: true, force: true });

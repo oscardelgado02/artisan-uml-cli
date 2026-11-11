@@ -40,7 +40,7 @@ interface UmlNode {
   x: number | null; y: number | null;
   attributes: Member[]; methods: Member[];
   note?: string;
-  dir?: string;     // project-root-relative directory `scaffold` creates/moves the class file in
+  dir?: string;     // scaffold-root-relative directory `scaffold` creates/moves the class file in (default dir = scaffoldDir config, else the --src root)
 }
 
 interface UmlEdge {

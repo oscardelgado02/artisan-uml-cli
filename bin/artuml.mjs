@@ -131,7 +131,7 @@ const TOPICS = {
   add: `artuml add <node|member|edge> ...
 
   add node <Name> [--kind class|abstract|interface|enum|record|struct]
-                 [--x N --y N] [--note "..."] [--dir src/Sub]
+                 [--x N --y N] [--note "..."] [--dir Sub]
   add member <Class> <attribute|method|value> <Name>
              [--type T] [--params P] [--vis +|-|#|~]
              [--mods static,abstract,...] [--note "..."]
@@ -143,7 +143,7 @@ const TOPICS = {
   edit: `artuml edit <node|member|edge> ...
 
   edit node <Name> [--name New] [--kind K] [--x N --y N] [--note "..."]
-                   [--dir src/Sub | --dir]   (scaffold placement; bare --dir clears)
+                   [--dir Sub | --dir]   (scaffold placement, relative to the scaffold root; bare --dir clears)
   edit member <Class> <Name> [--name New] [--type T] [--params P]
               [--vis +] [--mods static,abstract] [--note "..."]
   edit edge <From> <To> [--kind K] [--new-kind K] [--label L]
@@ -176,7 +176,8 @@ const TOPICS = {
       (bodies kept; unspecified diagram types keep the code's)
     - detected renames → applied silently (declaration, file when
       sole-type, identifiers in that file)
-    - node --dir placement → sole-type files moved there silently
+    - node --dir placement (relative to the scaffold root) → sole-type
+      files moved there silently
       (namespace NOT rewritten — check for drift)
     - code the diagram dropped → REMOVED, but gated: one y/n prompt
       (skip with --yes; silent when askBeforeRemove is false;
@@ -185,14 +186,14 @@ const TOPICS = {
   Leftovers are listed under "For the agent": method bodies,
   call-site refactors outside touched files, drift adoption.
   Never touches last-ai/pending; refreshes impl-diff.json.
-  Placement: node --dir > config scaffoldDir > --src root.`,
+  Placement: default dir = config scaffoldDir (else the --src root); a node --dir is relative to it.`,
   config: `artuml config <key> <value>
 
   Get/set project settings (.artisan/config.json):
     askBeforeRemove  true|false   prompt before code removals (scaffold)
     autoServe        true|false   every command ensures the editor server
-    scaffoldDir      <dir>        fallback directory for scaffold creations
-                                  ('' = the scan root; --dir beats it)
+    scaffoldDir      <dir>        the ROOT all files live under (default: the
+                                  --src root; node --dir is relative to it)
     stubBody         throw|empty|todo   stub method bodies (default throw =
                                   throw new NotImplementedException())
 
