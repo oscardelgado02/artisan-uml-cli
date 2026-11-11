@@ -11,7 +11,7 @@
   - **Moved**: a class with a `dir` that no longer matches its location is moved there (sole-type files, `fs.rename` + parent creation; namespaces are never rewritten — drift is reported).
   - Renames refactored outside the renamed file, declined removals and planned relations land in a *For the agent* section; judgment stays with the agent. `impl-diff.json` is refreshed afterwards; `last-ai`/`pending` are never touched.
 - **`artuml config [key] [value]`** — read or set config keys from the terminal. New keys: `scaffoldDir` (default scaffold root, seeded to the `--src` root by `scan`) and `stubBody` (`throw`/`empty`/`todo`, default `throw`).
-- Per-node `dir` field: `artuml add/edit node <Name> --dir src/Combat` (bare `--dir` clears), the editor's *Set directory…* context menu and a toolbar **Dir** button (serve mode, `GET`/`PUT /api/config`) both edit `scaffoldDir`. Project-root-relative paths only — absolute paths inside the root are converted, anything escaping it is rejected. `scan` seeds `dir` from the file's actual directory and survives re-scans.
+- Per-node `dir` field: `artuml add/edit node <Name> --dir src/Combat` (bare `--dir` clears), the editor's *Set directory…* context menu (embedded and served editors) and a toolbar **Dir** button (`GET`/`PUT /api/config`) both edit `scaffoldDir`. Project-root-relative paths only — absolute paths inside the root are converted, anything escaping it is rejected. `scan` seeds `dir` from the file's actual directory and survives re-scans.
 - `serve` endpoints `GET`/`PUT /api/config` for the editor's directory settings.
 
 ### Changed
