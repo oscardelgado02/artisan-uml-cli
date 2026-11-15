@@ -171,7 +171,7 @@ const TOPICS = {
 
     - diagram items missing from the code → stub class files and
       spliced members (bodies per stubBody config; notes become
-      // NOTE: comments; unspecified types become object)
+      // ARTISAN-NOTE: comments; unspecified types become object)
     - signature mismatches → patched to the diagram's version
       (bodies kept; unspecified diagram types keep the code's)
     - detected renames → applied silently (declaration, file when

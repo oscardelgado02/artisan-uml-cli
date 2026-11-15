@@ -54,7 +54,7 @@ signatures, applies renames (files, declarations and identifiers), and moves
 files whose class got a new `dir` (set per node via `artuml edit node
 <Name> --dir Combat` — relative to the default dir, the editor's *Set
 directory…*, or `scaffoldDir` in config: the ROOT all files live under). Generated bodies follow `stubBody` (`throw` →
-`NotImplementedException`, `empty`, `todo`); notes land as `// NOTE:` comments;
+`NotImplementedException`, `empty`, `todo`); notes land as `// ARTISAN-NOTE:` comments;
 namespaces are taken from a same-directory sibling or omitted.
 
 Removals (classes that exist in code but not in the diagram) are never silent:

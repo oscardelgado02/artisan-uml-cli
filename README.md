@@ -93,7 +93,7 @@ diagram-side work.
    markdown report for your agent: *rename these*, *scaffold these*, *notes to honor*.
    Removals are never auto-deleted; the agent must ask.
 4. **`artuml scaffold`** — applies that diff to the code for you: stub class files
-   (with `// NOTE:` comments and `NotImplementedException` bodies), member splices,
+    (with `// ARTISAN-NOTE:` comments and `NotImplementedException` bodies), member splices,
    signature patches, renames and file moves — `--yes` to confirm removals
    non-interactively. The agent then writes the real bodies and handles the
    judgement calls the CLI lists for it.
