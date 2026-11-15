@@ -252,6 +252,20 @@ const pending1b = JSON.parse(fs.readFileSync('.artisan/pending.json', 'utf8'));
 assert.equal(pending1b.filter((p) => p.type === 'node' && p.id === 'cNew').length, 1, 'mark-ai dedup by key');
 ok('mark-ai re-run does not duplicate refs');
 
+// regression: mark-ai after a consumed human edit must not queue the human's
+// own changes as pending AI refs (old last-human baseline swept them up)
+const beforePending = JSON.parse(fs.readFileSync('.artisan/pending.json', 'utf8'));
+cur.projectNotes = 'human edited in the editor';
+fs.writeFileSync('.artisan/diagram.json', JSON.stringify(cur));
+runDiff({}); // AI consumes the human edit — last-ai advances past it
+markAi();
+const pendingAfter = JSON.parse(fs.readFileSync('.artisan/pending.json', 'utf8'));
+assert.equal(pendingAfter.length, beforePending.length, 'mark-ai added no refs for consumed human edits');
+assert.ok(!pendingAfter.some((p) => p.summary?.includes('human edited in the editor')), 'human edit not misattributed as AI change');
+cur.projectNotes = 'Make it fun';
+fs.writeFileSync('.artisan/diagram.json', JSON.stringify(cur));
+ok('mark-ai does not misattribute consumed human edits');
+
 const { runAck } = await import('../lib/diff.mjs');
 runAck();
 const pending2 = JSON.parse(fs.readFileSync('.artisan/pending.json', 'utf8'));
@@ -562,6 +576,281 @@ fs.writeFileSync('src/Cat.cs', 'namespace Z {\n  public class Cat : Animal {\n  
 const happy = implDiff({ src: '.' });
 assert.ok(formatImplReport(happy.res, happy.map).startsWith('Implementation matches the diagram.'), 'aligned state reports match');
 ok('aligned diagram + code → clean report');
+
+// ------------------------------------------------------------- scaffold
+section('Scaffold engine');
+const { runScaffold } = await import('../lib/scaffold.mjs');
+const { normalizeProjectDir, setConfigKey } = await import('../lib/config.mjs');
+
+const scafRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'artisan-scaf-'));
+fs.mkdirSync(path.join(scafRoot, 'src'), { recursive: true });
+process.chdir(scafRoot);
+fs.writeFileSync('src/Animal.cs', 'namespace Z {\n  public abstract class Animal {\n    public abstract void Speak();\n  }\n}\n');
+fs.writeFileSync('src/Dog.cs', 'namespace Z {\n  public class Dog {\n    public void Bark() { }\n  }\n}\n');
+runScan({ src: '.', lang: 'csharp' });
+
+// code drift before first scaffold: code-only class Extra, code-only member livesLeft on Dog
+fs.writeFileSync('src/Dog.cs', 'namespace Z {\n  public class Dog {\n    public int livesLeft;\n    public void Bark() { }\n  }\n}\n');
+fs.writeFileSync('src/Extra.cs', 'namespace Z {\n  public class Extra {\n    public int Tag;\n  }\n}\n');
+
+// diagram asks for: new class Shelter in lib/ with members, a relation, class rename Dog→Doggo, new method Fetch on Doggo, param patch on Animal.Speak
+runAdd(['node', 'Shelter', '--dir', 'lib']);
+runAdd(['member', 'Shelter', 'attribute', 'residents', '--type', 'List<Animal>', '--vis', '-']);
+runAdd(['member', 'Shelter', 'method', 'Feed', '--type', 'void', '--params', 'food: string', '--note', 'kibble only']);
+runAdd(['edge', 'Shelter', 'Animal', '--kind', 'aggregation']);
+runEdit(['node', 'Dog', '--name', 'Doggo']);
+runAdd(['member', 'Doggo', 'method', 'Fetch', '--type', 'void', '--params', 'ball: string']);
+runEdit(['member', 'Animal', 'Speak', '--params', 'mood: string']);
+assert.throws(() => runAdd(['node', 'Bogus', '--dir', '..']), 'invalid dir rejected at add time');
+ok('diagram edits staged: rename, dir, param drift, code drift');
+
+// scaffold #1: non-TTY → removals skipped+listed
+const out1 = await runScaffold({ src: '.', yes: false });
+assert.ok(fs.existsSync('lib/Shelter.cs'), 'stub created in node.dir lib/');
+const shelterCs = fs.readFileSync('lib/Shelter.cs', 'utf8');
+assert.ok(!shelterCs.includes('namespace'), 'no sibling in lib/ → namespace omitted');
+assert.ok(shelterCs.includes('public class Shelter'), 'class keyword from kind');
+assert.ok(shelterCs.includes('private List<Animal> residents;'), 'attribute spliced with vis');
+assert.ok(shelterCs.includes('public void Feed(string food)'), 'method spliced with params');
+  assert.ok(shelterCs.includes('// ARTISAN-NOTE: kibble only'), 'member note rendered');
+assert.ok(shelterCs.includes('NotImplementedException'), 'default stubBody=throw');
+ok('created: stub class file with members from node.dir');
+assert.ok(fs.existsSync('src/Doggo.cs') && !fs.existsSync('src/Dog.cs'), 'renamed file on disk (sole type)');
+const doggoCs = fs.readFileSync('src/Doggo.cs', 'utf8');
+assert.ok(doggoCs.includes('class Doggo'), 'declaration renamed');
+assert.ok(doggoCs.includes('public void Fetch(string ball)') && doggoCs.includes('throw'), 'diagram-only method spliced into renamed file');
+ok('renames: class rename applied silently (declaration + file)');
+assert.ok(fs.readFileSync('src/Animal.cs', 'utf8').includes('public abstract void Speak(string mood);'), 'signature patched to diagram');
+assert.equal(out1.renamed.length, 1, 'one rename entry');
+assert.equal(out1.patched.length, 1, 'one patched sig');
+assert.equal(out1.moved.length, 0, 'no moves');
+assert.equal(out1.removed.length, 0, 'removals declined in non-TTY');
+assert.ok(out1.agent.some((s) => s.includes('relation')), 'diagram-only relation reported for agent');
+assert.equal(out1.agent.filter((s) => s.includes('kept (removal declined)')).length, 2, 'declined removals listed: Extra + livesLeft');
+const idj = readJSON('.artisan/impl-diff.json');
+assert.equal(idj.counts.drift, 3, 'refreshed impl-diff.json counts drift (Extra + its Tag + livesLeft)');
+assert.equal(idj.counts.missing, 0, 'nothing missing: residents field edge adopts the aggregation relation');
+assert.ok(!fs.existsSync('.artisan/last-ai.json.changed'), 'impl-diff.json written, lantern untouched');
+ok('scaffold run #1: create/rename/patch + gate + snapshot refresh');
+
+// stubBody config
+assert.throws(() => setConfigKey('stubBody', 'bogus'), 'invalid stubBody rejected');
+assert.equal(setConfigKey('stubBody', 'empty'), 'empty', 'valid stubBody stored');
+
+// scaffold #2: new diagram-only class Warden in src (sibling namespace picked up)
+runAdd(['node', 'Warden', '--dir', 'src']);
+runAdd(['member', 'Warden', 'method', 'Guard', '--type', 'void']);
+await runScaffold({ src: '.', yes: false });
+const wardenCs = fs.readFileSync('src/Warden.cs', 'utf8');
+assert.ok(wardenCs.includes('namespace Z'), 'placement dir nsByDir: sibling namespace inlined');
+assert.ok(wardenCs.includes('public class Warden'), 'stub class rendered');
+assert.ok(wardenCs.includes('public void Guard() { }'), 'stubBody=empty honored on second run');
+const shelterAgain = fs.readFileSync('lib/Shelter.cs', 'utf8');
+assert.ok(shelterAgain.includes('NotImplementedException'), 'stub body from first run untouched (existing file not rewritten)');
+ok('stubBody config: new class uses empty body, sibling namespace honored');
+
+// scaffold #3: --yes applies removals
+const out3 = await runScaffold({ src: '.', yes: true });
+assert.ok(!fs.existsSync('src/Extra.cs'), 'code-only class file deleted with --yes');
+assert.ok(!fs.readFileSync('src/Doggo.cs', 'utf8').includes('livesLeft'), 'code-only member spliced out with --yes');
+assert.ok(out3.removed.some((s) => s.includes('Extra')) && out3.removed.some((s) => s.includes('livesLeft')), 'removals reported');
+ok('removals: gated removal applies with --yes (file delete + member splice)');
+
+// moves: node.dir change relocates a sole-type file
+runEdit(['node', 'Animal', '--dir', 'src/Mammals']);
+const out4 = await runScaffold({ src: '.', yes: true });
+assert.ok(fs.existsSync('src/Mammals/Animal.cs') && !fs.existsSync('src/Animal.cs'), 'class moved to new dir');
+assert.ok(out4.moved.some((s) => s.includes('src/Animal.cs → src/Mammals/Animal.cs')), 'move reported');
+ok('moves: sole-type file follows node.dir');
+
+// dir survives a scan round-trip (mergeOld) + scan seeds dir from map
+runScan({ src: '.', lang: 'csharp' });
+const diagramAfter = normalizeDiagram(readJSON('.artisan/diagram.json'));
+const am = diagramAfter.nodes.find((n) => n.name === 'Animal');
+const sm = diagramAfter.nodes.find((n) => n.name === 'Shelter');
+const wm = diagramAfter.nodes.find((n) => n.name === 'Warden');
+assert.equal(am.dir, 'src/Mammals', 'dir survives mergeOld on rescan');
+assert.equal(sm.dir, 'lib', 'scan seeds node.dir from code location');
+assert.equal(wm.dir, 'src', 'scan seeds node.dir from code location (created stub)');
+ok('dir field: mergeOld + scan seeding round-trip');
+
+// normalizeProjectDir unit checks
+assert.equal(normalizeProjectDir('src/Sub'), 'src/Sub', 'relative kept');
+assert.equal(normalizeProjectDir(path.join(scafRoot, 'src', 'Sub')), 'src/Sub', 'absolute inside root → rel');
+assert.equal(normalizeProjectDir(''), '', 'empty allowed');
+assert.equal(normalizeProjectDir('.'), '.', 'root marker equal');
+assert.throws(() => normalizeProjectDir(path.join(path.dirname(scafRoot), 'other')), 'outside-root rejected');
+assert.throws(() => normalizeProjectDir('../escape'), 'parent escape rejected');
+ok('normalizeProjectDir: rel/abs/escape rules');
+
+process.chdir('/');
+fs.rmSync(scafRoot, { recursive: true, force: true });
+
+// ------------------------------------------------- note sync: scaffold ↔ code ↔ scan
+section('Note sync: scaffold → code → scan');
+const noteRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'artisan-note-'));
+fs.mkdirSync(path.join(noteRoot, 'src'), { recursive: true });
+process.chdir(noteRoot);
+fs.writeFileSync('src/Pet.cs', 'namespace Z {\n  public class Pet {\n    public void Wag() { }\n  }\n}\n');
+fs.writeFileSync('src/Mood.cs', 'namespace Z {\n  public enum Mood {\n    Happy,\n    Sleepy\n  }\n}\n');
+fs.writeFileSync('src/Kennel.cs', 'namespace Z {\n  public class Kennel {\n  }\n}\n');
+runScan({ src: '.', lang: 'csharp' });
+
+// notes on EXISTING code declarations only (no create+note mixed in one pass)
+runEdit(['node', 'Pet', '--note', 'best friend']);
+runEdit(['member', 'Pet', 'Wag', '--note', 'wags when happy']);
+runEdit(['member', 'Mood', 'Happy', '--note', 'pure joy']);
+
+const markerCount = (t) => t.split('// ARTISAN-NOTE:').length - 1;
+let reportText = '';
+const origLog = console.log;
+console.log = (msg) => { reportText += String(msg) + '\n'; };
+let nout1;
+try {
+  nout1 = await runScaffold({ src: '.', yes: true });
+} finally {
+  console.log = origLog;
+}
+
+assert.ok(Array.isArray(nout1.notes), 'runScaffold returns notes array');
+assert.ok(nout1.notes.some((s) => s.includes('Pet — note synced')), 'node note reported: ' + JSON.stringify(nout1.notes));
+assert.ok(nout1.notes.some((s) => s.includes('Pet.Wag — note synced')), 'member note reported');
+assert.ok(nout1.notes.some((s) => s.includes('Mood.Happy — note synced')), 'enum value note reported');
+assert.ok(nout1.notes.length >= 3, 'one notes entry per synced declaration: ' + nout1.notes.length);
+
+const petCs1 = fs.readFileSync('src/Pet.cs', 'utf8');
+const classNote = petCs1.match(/( *)\/\/ ARTISAN-NOTE: best friend\n( *)public class Pet/);
+assert.ok(classNote, 'class note inserted directly above declaration');
+assert.ok(classNote[1] === classNote[2], 'class note aligned with declaration indent');
+const wagNote = petCs1.match(/( *)\/\/ ARTISAN-NOTE: wags when happy\n( *)public void Wag/);
+assert.ok(wagNote, 'method note directly above member declaration');
+assert.ok(wagNote[1] === wagNote[2], 'member note at member indentation');
+const happyNote = fs.readFileSync('src/Mood.cs', 'utf8').match(/( *)\/\/ ARTISAN-NOTE: pure joy\n( *)Happy,?/);
+assert.ok(happyNote, 'enum value note directly above value');
+assert.ok(happyNote[1] === happyNote[2], 'enum value note at value indentation');
+assert.ok(reportText.includes('Notes'), 'human report has Notes section');
+assert.ok(reportText.includes('Pet.Wag'), 'report lists synced ref');
+
+// idempotency: re-scaffold never duplicates markers
+const petBefore = fs.readFileSync('src/Pet.cs', 'utf8');
+const moodBefore = fs.readFileSync('src/Mood.cs', 'utf8');
+const nout2 = await runScaffold({ src: '.', yes: true });
+const petAfter2 = fs.readFileSync('src/Pet.cs', 'utf8');
+assert.equal(markerCount(petAfter2), markerCount(petBefore), 're-scaffold: no duplicate markers in Pet.cs');
+assert.equal(markerCount(fs.readFileSync('src/Mood.cs', 'utf8')), markerCount(moodBefore), 're-scaffold: no duplicate markers in Mood.cs');
+assert.ok(nout2.notes.length === 0 || nout2.notes.every((s) => !s.includes('note synced')), 're-scaffold reports no synced notes: ' + JSON.stringify(nout2.notes));
+
+// update: changed note text rewritten in place, still exactly one marker
+runEdit(['node', 'Pet', '--note', 'loyal companion']);
+await runScaffold({ src: '.', yes: true });
+const petUpd = fs.readFileSync('src/Pet.cs', 'utf8');
+assert.ok(/\/\/ ARTISAN-NOTE: loyal companion\n\s*public class Pet/.test(petUpd), 'note text updated above declaration');
+assert.ok(!petUpd.includes('best friend'), 'stale note text gone');
+assert.equal((petUpd.match(/\/\/ ARTISAN-NOTE: loyal companion/g) || []).length, 1, 'updated note appears exactly once');
+
+// removal: note deleted from diagram → marker removed from code
+runEdit(['node', 'Pet', '--note']); // --note with no value clears
+runEdit(['member', 'Pet', 'Wag', '--note']);
+await runScaffold({ src: '.', yes: true });
+const petClean = fs.readFileSync('src/Pet.cs', 'utf8');
+assert.ok(!petClean.includes('loyal companion'), 'node note removed from code');
+assert.ok(!/\/\/ ARTISAN-NOTE:[^\n]*\n\s*public class Pet/.test(petClean), 'no marker left above class declaration');
+assert.ok(!/\/\/ ARTISAN-NOTE:[^\n]*\n\s*public void Wag/.test(petClean), 'no marker left above member declaration');
+ok('scaffold note sync: insert / idempotent / update / remove');
+
+// scan extraction: contiguous marker lines attach to node + members
+fs.writeFileSync('src/Lore.cs', [
+  'namespace Z {',
+  '  // ARTISAN-NOTE: lived once',
+  '  // ARTISAN-NOTE: died smiling',
+  '  public class Lore {',
+  '    // ARTISAN-NOTE: wags',
+  '    public void Wag() { }',
+  '    // ARTISAN-NOTE: tracked',
+  '    [Serializable]',
+  '    public int Blessing;',
+  '  }',
+  '}',
+].join('\n') + '\n');
+runScan({ src: '.', lang: 'csharp' });
+const lore = normalizeDiagram(readJSON('.artisan/diagram.json')).nodes.find((n) => n.name === 'Lore');
+assert.ok(lore, 'Lore scanned');
+assert.equal(lore.note, 'lived once\ndied smiling', 'multi-line node note joined with \\n');
+assert.equal(lore.methods.find((m) => m.name === 'Wag').note, 'wags', 'method note extracted');
+assert.equal(lore.attributes.find((m) => m.name === 'Blessing').note, 'tracked', 'note extracted across a [Serializable] attribute line');
+ok('scan extracts ARTISAN-NOTE comments (node, method, attribute, multi-line)');
+
+// code-wins precedence: diagram note survives without code comment; code comment wins over diagram note
+runEdit(['node', 'Kennel', '--note', 'A']);
+runScan({ src: '.', lang: 'csharp' });
+assert.equal(normalizeDiagram(readJSON('.artisan/diagram.json')).nodes.find((n) => n.name === 'Kennel').note, 'A', 'mergeOld keeps diagram note when code has no comment');
+fs.writeFileSync('src/Kennel.cs', 'namespace Z {\n  // ARTISAN-NOTE: B\n  public class Kennel {\n  }\n}\n');
+runScan({ src: '.', lang: 'csharp' });
+assert.equal(normalizeDiagram(readJSON('.artisan/diagram.json')).nodes.find((n) => n.name === 'Kennel').note, 'B', 'code-wins: rescan adopts code comment over diagram note');
+ok('rescan precedence: code comment wins, diagram note survives otherwise');
+
+// round trip: scaffold writes comment → rescan parses identical note → no churn
+runEdit(['node', 'Mood', '--note', 'feelings matter']);
+await runScaffold({ src: '.', yes: true });
+assert.ok(/\/\/ ARTISAN-NOTE: feelings matter\n\s*public enum Mood/.test(fs.readFileSync('src/Mood.cs', 'utf8')), 'scaffold wrote note above enum declaration');
+const dAfterScaffold = normalizeDiagram(readJSON('.artisan/diagram.json'));
+runScan({ src: '.', lang: 'csharp' });
+const dAfterRescan = normalizeDiagram(readJSON('.artisan/diagram.json'));
+assert.equal(dAfterRescan.nodes.find((n) => n.name === 'Mood').note, 'feelings matter', 'round trip: rescan parses the scaffolded note identically');
+const rtChurn = diffDiagram(dAfterScaffold, dAfterRescan);
+assert.ok(!rtChurn.notes.length && !rtChurn.modified.length, 'round trip: no note churn after scaffold→rescan');
+ok('round trip: scaffolded note survives rescan with zero churn');
+
+process.chdir('/');
+fs.rmSync(noteRoot, { recursive: true, force: true });
+
+// ------------------------------------------- scaffold dirs relative to ROOT
+section('Scaffold dirs: default dir + per-node relative + migration');
+const dirRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'artisan-dirs-'));
+fs.mkdirSync(path.join(dirRoot, 'src'), { recursive: true });
+process.chdir(dirRoot);
+fs.writeFileSync('src/Animal.cs', 'namespace Z {\n  public abstract class Animal {\n    public abstract void Speak();\n  }\n}\n');
+fs.writeFileSync('src/Dog.cs', 'namespace Z {\n  public class Dog : Animal {\n    public override void Speak() { }\n  }\n}\n');
+fs.writeFileSync('src/Wolf.cs', 'namespace Z {\n  public class Wolf : Animal {\n    public override void Speak() { }\n  }\n}\n');
+runScan({ src: 'src', lang: 'csharp' });
+assert.equal(loadConfig().scaffoldDir, 'src', 'scan seeds scaffoldDir to the --src root');
+const seeded = normalizeDiagram(readJSON('.artisan/diagram.json'));
+assert.ok(seeded.nodes.every((n) => !n.dir), 'files directly in the src root seed no per-node dir (never ".")');
+
+// legacy project-root-relative dirs migrate: 'src' clears, '.' clears,
+// prefixed 'src/Wild' strips (disk agrees), unprefixed stays and re-resolves
+{
+  const d = readJSON('.artisan/diagram.json');
+  for (const n of d.nodes) {
+    if (n.name === 'Animal') n.dir = 'src'; // legacy == default dir → unset
+    if (n.name === 'Dog') n.dir = '.'; // legacy root marker → unset
+    if (n.name === 'Wolf') n.dir = 'src/Wild'; // legacy prefixed → 'Wild'
+  }
+  writeJSON('.artisan/diagram.json', d);
+}
+runScan({ src: 'src', lang: 'csharp' });
+const migratedDiagram = normalizeDiagram(readJSON('.artisan/diagram.json'));
+assert.ok(!migratedDiagram.nodes.find((n) => n.name === 'Animal').dir, 'legacy dir == default dir migrated to unset');
+assert.ok(!migratedDiagram.nodes.find((n) => n.name === 'Dog').dir, 'legacy "." migrated to unset');
+assert.equal(migratedDiagram.nodes.find((n) => n.name === 'Wolf').dir, 'Wild', 'legacy "src/Wild" migrated to default-dir-relative');
+assert.equal(loadConfig().scaffoldDir, 'src', 'config untouched by migration');
+
+// per-node dir resolves relative to the default dir; no dir → default dir
+runAdd(['node', 'Predator', '--dir', 'Combat']);
+assert.equal(normalizeDiagram(readJSON('.artisan/diagram.json')).nodes.find((n) => n.name === 'Predator').dir, 'Combat', '--dir stored default-dir-relative');
+const dirScaffold = await runScaffold({ src: 'src', yes: true });
+assert.ok(fs.existsSync('src/Combat/Predator.cs'), 'node dir Combat → src/Combat (relative to the default dir)');
+assert.ok(!fs.existsSync('Combat/Predator.cs'), 'no root spawn');
+runAdd(['node', 'Prey']);
+await runScaffold({ src: 'src', yes: true });
+assert.ok(fs.existsSync('src/Prey.cs'), 'no per-node dir → default dir (src), not project root');
+assert.ok(dirScaffold.moved.some((s) => s.includes('src/Wolf.cs → src/Wild/Wolf.cs')), 'legacy prefixed dir moves the file under src');
+assert.throws(() => runEdit(['node', 'Prey', '--dir', '../escape']), 'dir escaping the scaffold root rejected');
+await runScaffold({ src: 'src', yes: true });
+ok('scaffold dirs: default dir + per-node relative + migration');
+
+process.chdir('/');
+fs.rmSync(dirRoot, { recursive: true, force: true });
 
 process.chdir('/');
 fs.rmSync(tmp, { recursive: true, force: true });
