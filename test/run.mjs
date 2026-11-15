@@ -612,7 +612,7 @@ assert.ok(!shelterCs.includes('namespace'), 'no sibling in lib/ → namespace om
 assert.ok(shelterCs.includes('public class Shelter'), 'class keyword from kind');
 assert.ok(shelterCs.includes('private List<Animal> residents;'), 'attribute spliced with vis');
 assert.ok(shelterCs.includes('public void Feed(string food)'), 'method spliced with params');
-assert.ok(shelterCs.includes('// NOTE: kibble only'), 'member note rendered');
+  assert.ok(shelterCs.includes('// ARTISAN-NOTE: kibble only'), 'member note rendered');
 assert.ok(shelterCs.includes('NotImplementedException'), 'default stubBody=throw');
 ok('created: stub class file with members from node.dir');
 assert.ok(fs.existsSync('src/Doggo.cs') && !fs.existsSync('src/Dog.cs'), 'renamed file on disk (sole type)');
@@ -685,6 +685,124 @@ ok('normalizeProjectDir: rel/abs/escape rules');
 
 process.chdir('/');
 fs.rmSync(scafRoot, { recursive: true, force: true });
+
+// ------------------------------------------------- note sync: scaffold ↔ code ↔ scan
+section('Note sync: scaffold → code → scan');
+const noteRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'artisan-note-'));
+fs.mkdirSync(path.join(noteRoot, 'src'), { recursive: true });
+process.chdir(noteRoot);
+fs.writeFileSync('src/Pet.cs', 'namespace Z {\n  public class Pet {\n    public void Wag() { }\n  }\n}\n');
+fs.writeFileSync('src/Mood.cs', 'namespace Z {\n  public enum Mood {\n    Happy,\n    Sleepy\n  }\n}\n');
+fs.writeFileSync('src/Kennel.cs', 'namespace Z {\n  public class Kennel {\n  }\n}\n');
+runScan({ src: '.', lang: 'csharp' });
+
+// notes on EXISTING code declarations only (no create+note mixed in one pass)
+runEdit(['node', 'Pet', '--note', 'best friend']);
+runEdit(['member', 'Pet', 'Wag', '--note', 'wags when happy']);
+runEdit(['member', 'Mood', 'Happy', '--note', 'pure joy']);
+
+const markerCount = (t) => t.split('// ARTISAN-NOTE:').length - 1;
+let reportText = '';
+const origLog = console.log;
+console.log = (msg) => { reportText += String(msg) + '\n'; };
+let nout1;
+try {
+  nout1 = await runScaffold({ src: '.', yes: true });
+} finally {
+  console.log = origLog;
+}
+
+assert.ok(Array.isArray(nout1.notes), 'runScaffold returns notes array');
+assert.ok(nout1.notes.some((s) => s.includes('Pet — note synced')), 'node note reported: ' + JSON.stringify(nout1.notes));
+assert.ok(nout1.notes.some((s) => s.includes('Pet.Wag — note synced')), 'member note reported');
+assert.ok(nout1.notes.some((s) => s.includes('Mood.Happy — note synced')), 'enum value note reported');
+assert.ok(nout1.notes.length >= 3, 'one notes entry per synced declaration: ' + nout1.notes.length);
+
+const petCs1 = fs.readFileSync('src/Pet.cs', 'utf8');
+const classNote = petCs1.match(/( *)\/\/ ARTISAN-NOTE: best friend\n( *)public class Pet/);
+assert.ok(classNote, 'class note inserted directly above declaration');
+assert.ok(classNote[1] === classNote[2], 'class note aligned with declaration indent');
+const wagNote = petCs1.match(/( *)\/\/ ARTISAN-NOTE: wags when happy\n( *)public void Wag/);
+assert.ok(wagNote, 'method note directly above member declaration');
+assert.ok(wagNote[1] === wagNote[2], 'member note at member indentation');
+const happyNote = fs.readFileSync('src/Mood.cs', 'utf8').match(/( *)\/\/ ARTISAN-NOTE: pure joy\n( *)Happy,?/);
+assert.ok(happyNote, 'enum value note directly above value');
+assert.ok(happyNote[1] === happyNote[2], 'enum value note at value indentation');
+assert.ok(reportText.includes('Notes'), 'human report has Notes section');
+assert.ok(reportText.includes('Pet.Wag'), 'report lists synced ref');
+
+// idempotency: re-scaffold never duplicates markers
+const petBefore = fs.readFileSync('src/Pet.cs', 'utf8');
+const moodBefore = fs.readFileSync('src/Mood.cs', 'utf8');
+const nout2 = await runScaffold({ src: '.', yes: true });
+const petAfter2 = fs.readFileSync('src/Pet.cs', 'utf8');
+assert.equal(markerCount(petAfter2), markerCount(petBefore), 're-scaffold: no duplicate markers in Pet.cs');
+assert.equal(markerCount(fs.readFileSync('src/Mood.cs', 'utf8')), markerCount(moodBefore), 're-scaffold: no duplicate markers in Mood.cs');
+assert.ok(nout2.notes.length === 0 || nout2.notes.every((s) => !s.includes('note synced')), 're-scaffold reports no synced notes: ' + JSON.stringify(nout2.notes));
+
+// update: changed note text rewritten in place, still exactly one marker
+runEdit(['node', 'Pet', '--note', 'loyal companion']);
+await runScaffold({ src: '.', yes: true });
+const petUpd = fs.readFileSync('src/Pet.cs', 'utf8');
+assert.ok(/\/\/ ARTISAN-NOTE: loyal companion\n\s*public class Pet/.test(petUpd), 'note text updated above declaration');
+assert.ok(!petUpd.includes('best friend'), 'stale note text gone');
+assert.equal((petUpd.match(/\/\/ ARTISAN-NOTE: loyal companion/g) || []).length, 1, 'updated note appears exactly once');
+
+// removal: note deleted from diagram → marker removed from code
+runEdit(['node', 'Pet', '--note']); // --note with no value clears
+runEdit(['member', 'Pet', 'Wag', '--note']);
+await runScaffold({ src: '.', yes: true });
+const petClean = fs.readFileSync('src/Pet.cs', 'utf8');
+assert.ok(!petClean.includes('loyal companion'), 'node note removed from code');
+assert.ok(!/\/\/ ARTISAN-NOTE:[^\n]*\n\s*public class Pet/.test(petClean), 'no marker left above class declaration');
+assert.ok(!/\/\/ ARTISAN-NOTE:[^\n]*\n\s*public void Wag/.test(petClean), 'no marker left above member declaration');
+ok('scaffold note sync: insert / idempotent / update / remove');
+
+// scan extraction: contiguous marker lines attach to node + members
+fs.writeFileSync('src/Lore.cs', [
+  'namespace Z {',
+  '  // ARTISAN-NOTE: lived once',
+  '  // ARTISAN-NOTE: died smiling',
+  '  public class Lore {',
+  '    // ARTISAN-NOTE: wags',
+  '    public void Wag() { }',
+  '    // ARTISAN-NOTE: tracked',
+  '    [Serializable]',
+  '    public int Blessing;',
+  '  }',
+  '}',
+].join('\n') + '\n');
+runScan({ src: '.', lang: 'csharp' });
+const lore = normalizeDiagram(readJSON('.artisan/diagram.json')).nodes.find((n) => n.name === 'Lore');
+assert.ok(lore, 'Lore scanned');
+assert.equal(lore.note, 'lived once\ndied smiling', 'multi-line node note joined with \\n');
+assert.equal(lore.methods.find((m) => m.name === 'Wag').note, 'wags', 'method note extracted');
+assert.equal(lore.attributes.find((m) => m.name === 'Blessing').note, 'tracked', 'note extracted across a [Serializable] attribute line');
+ok('scan extracts ARTISAN-NOTE comments (node, method, attribute, multi-line)');
+
+// code-wins precedence: diagram note survives without code comment; code comment wins over diagram note
+runEdit(['node', 'Kennel', '--note', 'A']);
+runScan({ src: '.', lang: 'csharp' });
+assert.equal(normalizeDiagram(readJSON('.artisan/diagram.json')).nodes.find((n) => n.name === 'Kennel').note, 'A', 'mergeOld keeps diagram note when code has no comment');
+fs.writeFileSync('src/Kennel.cs', 'namespace Z {\n  // ARTISAN-NOTE: B\n  public class Kennel {\n  }\n}\n');
+runScan({ src: '.', lang: 'csharp' });
+assert.equal(normalizeDiagram(readJSON('.artisan/diagram.json')).nodes.find((n) => n.name === 'Kennel').note, 'B', 'code-wins: rescan adopts code comment over diagram note');
+ok('rescan precedence: code comment wins, diagram note survives otherwise');
+
+// round trip: scaffold writes comment → rescan parses identical note → no churn
+runEdit(['node', 'Mood', '--note', 'feelings matter']);
+await runScaffold({ src: '.', yes: true });
+assert.ok(/\/\/ ARTISAN-NOTE: feelings matter\n\s*public enum Mood/.test(fs.readFileSync('src/Mood.cs', 'utf8')), 'scaffold wrote note above enum declaration');
+const dAfterScaffold = normalizeDiagram(readJSON('.artisan/diagram.json'));
+runScan({ src: '.', lang: 'csharp' });
+const dAfterRescan = normalizeDiagram(readJSON('.artisan/diagram.json'));
+assert.equal(dAfterRescan.nodes.find((n) => n.name === 'Mood').note, 'feelings matter', 'round trip: rescan parses the scaffolded note identically');
+const rtChurn = diffDiagram(dAfterScaffold, dAfterRescan);
+assert.ok(!rtChurn.notes.length && !rtChurn.modified.length, 'round trip: no note churn after scaffold→rescan');
+ok('round trip: scaffolded note survives rescan with zero churn');
+
+process.chdir('/');
+fs.rmSync(noteRoot, { recursive: true, force: true });
 
 // ------------------------------------------- scaffold dirs relative to ROOT
 section('Scaffold dirs: default dir + per-node relative + migration');
