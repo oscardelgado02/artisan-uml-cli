@@ -219,7 +219,7 @@ pnpm test           # prepublishOnly: tests + editor check (artisan-uml must shi
 pnpm publish --access public
 ```
 
-`artisan-uml@^1.2.3` must be on npm first — it ships the built editor.
+`artisan-uml@^1.3.0` must be on npm first — it ships the built editor.
 
 ## Documentation
 

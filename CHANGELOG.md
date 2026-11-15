@@ -19,7 +19,7 @@
 - `serve` endpoints `GET`/`PUT /api/config` for the editor's directory settings.
 
 ### Changed
-- Editor package requires `artisan-uml@^1.2.3` (adds the directory UI, still contract `2`).
+- Editor package requires `artisan-uml@^1.3.0` (adds the directory UI, still contract `2`).
 
 ### Fixed
 - `mark-ai` no longer misattributes the human's own unacknowledged editor edits as pending AI changes: it now diffs `diagram.json` against `last-ai.json` (what the agent last consumed) instead of `last-human.json` (the last ack). Before, running it right after a consuming `diff` re-queued the human's just-consumed edits as amber refs — the next `diff` went blind on them, and Rejecting those refs reverted the human's own work. Scan and architect flows are unchanged: rescan churn and real agent diagram edits still land as amber review items.
