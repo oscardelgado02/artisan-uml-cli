@@ -15,6 +15,7 @@ re-scans, so committing keeps that history.
 | `last-human.json` | snapshot the human last acknowledged (baseline for `ack`/revert) |
 | `pending.json` | agent changes the human has not seen yet (amber highlights) |
 | `changelog.json` | append-only history of changes and acks |
+| `context.md` | human-authored project intent — Overview, Glossary, Requirements, Invariants, Roadmap, Non-goals. `scan` seeds the template once and never rewrites it; agents read it before architect/implement/scaffold work. Fill it with the `/artisan-context` pack (or by hand) |
 | `config.json` | settings — `askBeforeRemove`, `autoServe`, `scaffoldDir`, `stubBody` (see `docs/commands.md`); optional, overrides the global `~/.config/artuml/config.json` |
 | `editor/` | bundled editor assets (inlined into `diagram.html`) |
 

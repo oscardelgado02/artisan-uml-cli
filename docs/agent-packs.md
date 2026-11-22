@@ -9,7 +9,9 @@ for **opencode**, **Claude Code** and **Codex**:
 
 | Slash command | What the agent does |
 | --- | --- |
+| `/artisan-set-up` | Day zero: runs `artuml scan`, then walks you through creating `.artisan/context.md` (the project intent doc) |
 | `/artisan-scan` | Runs `artuml scan`, tells you how to open the editor, reads `diagram.puml` |
+| `/artisan-context` | Creates or reviews `.artisan/context.md` — drafts Overview/Glossary from your diagram, walks section by section, every line human-approved |
 | `/artisan-scaffold` | Runs `artuml diff`, then `artuml scaffold`: stubs, splices, renames, moves and patches are mechanical; the agent refactors call sites outside the renamed file, relays removal candidates once and re-runs `scaffold --yes` only after your explicit yes |
 | `/artisan-implement` | Same, then writes real bodies into the generated stubs honoring your notes (not just `NotImplementedException`) |
 | `/artisan-architect` | You ask; the agent edits `diagram.json` itself and runs `mark-ai` — you review amber changes in the editor |

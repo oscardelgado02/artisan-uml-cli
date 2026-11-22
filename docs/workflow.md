@@ -13,6 +13,11 @@ Parses your C# into `.artisan/diagram.json` (the source of truth) and
 `diagram.puml` — the PlantUML mirror your agent reads. Your positions, notes and
 relations survive every re-scan; new classes land next to what they belong to.
 
+`scan` also seeds `.artisan/context.md` — a template for the project intent doc
+(Overview, Glossary, Requirements, Invariants, Roadmap, Non-goals) that agents
+read before proposing or implementing. It is human-authored: the tool never
+rewrites it; fill it with the `/artisan-context` pack (or by hand).
+
 ## 2. You redesign
 
 Open `.artisan/diagram.html` (or run `artuml editor`). Drag, rewire, rename,

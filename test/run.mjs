@@ -190,6 +190,13 @@ ok('map.json type → file');
 assert.ok(fs.existsSync('.artisan/last-ai.json') && fs.existsSync('.artisan/last-human.json') && fs.existsSync('.artisan/pending.json'));
 ok('snapshots initialized');
 
+// context.md: seeded once as a template, never rewritten
+const ctxPath = '.artisan/context.md';
+assert.ok(fs.existsSync(ctxPath), 'scan seeds context.md template');
+assert.ok(fs.readFileSync(ctxPath, 'utf8').includes('## Glossary'), 'template has the section set');
+ok('scan seeds context.md template');
+const ctxBefore = fs.readFileSync(ctxPath, 'utf8');
+
 // config: scan seeds project defaults; project overrides global
 const cfg = JSON.parse(fs.readFileSync('.artisan/config.json', 'utf8'));
 assert.equal(cfg.askBeforeRemove, true, 'scan seeds askBeforeRemove default');
@@ -278,8 +285,9 @@ ok('changelog tracks actors');
 
 // rescan keeps notes/positions
 cur.nodes[0].x = 777;
-fs.writeFileSync('.artisan/diagram.json', JSON.stringify(cur));
-runScan({ src: '.', lang: 'csharp' });
+  fs.writeFileSync('.artisan/diagram.json', JSON.stringify(cur));
+  runScan({ src: '.', lang: 'csharp' });
+  assert.equal(fs.readFileSync(ctxPath, 'utf8'), ctxBefore, 'rescan never rewrites context.md');
 const rescan = JSON.parse(fs.readFileSync('.artisan/diagram.json', 'utf8'));
 const kept = rescan.nodes.find((n) => n.name === 'Animal');
 assert.equal(kept.note, 'peeked but not consumed', 'note survived rescan');
