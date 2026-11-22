@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.7.1 — 22.11.2026
+
+### Fixed
+- `scaffold` no longer mangles enum values into class fields (`public object Up;`): `diff`'s member comparison (shared by `diff`/`mark-ai`/`impl-diff`) skips visibility/type/modifier checks for members of enum nodes — the editor stores values as `+`/no-type, the C# scanner as `-`/no-type, which used to fabricate a "visibility + → -" change on every value, spam impl-diff reports, and make a second scaffold rewrite the enum body through the field patcher. Belt-and-braces, the scaffold patcher also skips enum blocks entirely. A side-effect of the patcher cleanup: splice and note-sync on enum values is now clean — the last value of a one-line enum body gets spliced with proper indentation and can carry a note.
+- `scaffold` splice output for created members in tight code was mangled (`Sleepy \n    Up,}` / `Sleepy\n  \n      Up,}`): splices now insert after the last member line at the closing-brace indent, and the one-line-body case strips the trailing whitespace.
+- `scaffold` note-sync on the last member of a one-line enum body never matched its position (the terminator scan didn't accept a following whitespace-only tail) and reported "note not applied — member missing from code" for every note-less member; both fixed.
+
 ## 0.7.0 — 22.11.2026
 
 ### Added

@@ -860,9 +860,31 @@ ok('scaffold dirs: default dir + per-node relative + migration');
 process.chdir('/');
 fs.rmSync(dirRoot, { recursive: true, force: true });
 
+// ------------------------------------------------- enum values: plain values, never field-ified
+section('Enum values: plain values, never field-ified');
+const enumRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'artisan-enum-'));
+fs.mkdirSync(path.join(enumRoot, 'src'), { recursive: true });
+process.chdir(enumRoot);
+fs.writeFileSync('src/Mood.cs', 'namespace Z {\n  public enum Mood {\n    Happy,\n    Sleepy\n  }\n}\n');
+runScan({ src: '.', lang: 'csharp' });
+runAdd(['member', 'Mood', 'value', 'Up']);
+await runScaffold({ src: '.', yes: true });
+let moodCs = fs.readFileSync('src/Mood.cs', 'utf8');
+assert.ok(/^\s*Up,\s*$/m.test(moodCs), 'scaffold splices enum value as a plain value');
+assert.ok(!/(public|object)\s+Up/.test(moodCs), 'no field-ified enum value');
+await runScaffold({ src: '.', yes: true });
+moodCs = fs.readFileSync('src/Mood.cs', 'utf8');
+assert.ok(/^\s*Up,\s*$/m.test(moodCs), 're-scaffold keeps the plain value (patch path)');
+assert.ok(!/public\s+(object\s+)?Up/.test(moodCs), 'no field rewrite on re-scaffold');
+const eires = implDiff({ src: '.' });
+assert.ok(!eires.res.modified.some((m) => m.ref.startsWith('Mood.')), 'impl-diff: no phantom visibility mismatch on enum values');
+assert.ok(formatImplReport(eires.res, eires.map).startsWith('Implementation matches the diagram.'), 'impl-diff clean after enum splice');
+ok('enum values: plain splice, idempotent re-scaffold, silent impl-diff');
+
 process.chdir('/');
 fs.rmSync(tmp, { recursive: true, force: true });
 fs.rmSync(addRoot, { recursive: true, force: true });
 fs.rmSync(implRoot, { recursive: true, force: true });
+fs.rmSync(enumRoot, { recursive: true, force: true });
 
 console.log(`\nAll ${passed} checks passed.`);
