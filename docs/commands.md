@@ -13,7 +13,7 @@ artuml help <cmd>    # detailed help for one command
 
 | Command | What it does |
 | --- | --- |
-| `artuml scan` | Parse C# → `.artisan/diagram.json` + `diagram.puml` + single-file `diagram.html`. Re-scan keeps positions and notes. Seeds `.artisan/config.json` with defaults if absent. |
+| `artuml scan` | Parse C# → `.artisan/diagram.json` + `diagram.puml` + single-file `diagram.html`. Re-scan keeps positions and notes. Seeds `.artisan/config.json` with defaults if absent, and `.artisan/context.md` (project-intent template) once — never rewritten afterwards. |
 | `artuml diff [--json] [--peek]` | Human diagram changes → markdown report for the agent (renames detected, removals ask). Consumes them. `--peek` reports **without** consuming — for look-only checks (`status` does this internally). |
 | `artuml impl-diff [--src DIR] [--json]` | Diagram vs code, read-only: diagram items missing from the code, code drift not in the diagram, signature mismatches. Marks nothing seen — run it after `diff` in `/artisan-implement` to catch anything acked or scanned out-of-band. Writes `.artisan/impl-diff.json` so the editor can show its "Code out of sync" badge. |
 | `artuml scaffold [--src DIR] [--json] [--yes]` | Apply the impl-diff result to the code: create stub files/members for diagrammed-but-missing items, patch signature mismatches, apply renames silently, move files when a node's `dir` changed (sole-type files only). Removals (code not in the diagram) are gated behind one `y/n` prompt — `--yes` skips it; non-interactive shells remove nothing and list candidates. Refreshes `impl-diff.json`, so the editor badge clears. |

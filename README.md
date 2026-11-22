@@ -77,17 +77,21 @@ without the file-handle API, or when you want the pending API.
 ### With your coding agent
 
 The main [Artisan repo](https://github.com/oscardelgado02/artisan) ships slash-command
-packs (`/artisan-scan`, `/artisan-scaffold`, `/artisan-implement`, `/artisan-architect`,
-`/artisan-status`) for opencode, Claude Code and Codex — its `install.sh` copies them
-into your agent's command folder. Without them, any agent can still work from this
-document: run `artuml diff`, then `artuml scaffold` for the mechanical part, write the
-real bodies into the stubs, and edit `.artisan/diagram.json` + `artuml mark-ai` after
+packs (`/artisan-set-up`, `/artisan-scan`, `/artisan-serve`, `/artisan-context`,
+`/artisan-scaffold`, `/artisan-implement`, `/artisan-architect`, `/artisan-status`)
+for opencode, Claude Code and Codex — its installer copies them into your agent's
+command folder. Without them, any agent can still work from this document: run
+`artuml diff`, then `artuml scaffold` for the mechanical part, write the real bodies
+into the stubs, and edit `.artisan/diagram.json` + `artuml mark-ai` after
 diagram-side work.
 
 ## The workflow
 
 1. **`artuml scan`** — parses your C# into `.artisan/diagram.json` + a PlantUML mirror
-   agents read. Re-scan keeps your positions and notes.
+   agents read. Re-scan keeps your positions and notes. Seeds `.artisan/context.md`
+   (the project-intent doc template) once — fill it with the `/artisan-context` pack
+   or by hand; agents read it before proposing or implementing, and the tool never
+   rewrites it.
 2. **You redesign** in the editor: drag, rewire, rename, add classes, write notes.
 3. **`artuml diff`** — compares the diagram against the last known state and prints a
    markdown report for your agent: *rename these*, *scaffold these*, *notes to honor*.

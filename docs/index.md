@@ -17,7 +17,9 @@ artuml scan
 ```
 
 One runtime dependency: the `artisan-uml` editor package. Everything it knows
-lives in `.artisan/`, next to your project.
+lives in `.artisan/`, next to your project. `scan` also seeds
+`.artisan/context.md` — a template for the project intent doc your agent reads
+(fill it with the `/artisan-context` pack or by hand; the tool never rewrites it).
 
 ## Open the diagram
 

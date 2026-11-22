@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.7.0 — 22.11.2026
+
+### Added
+- `artuml scan` seeds `.artisan/context.md` — the project-intent doc template (Overview, Glossary, Requirements, Invariants, Roadmap, Non-goals) that the `/artisan-*` agent packs read before proposing or implementing. Created once when missing, like `config.json`: never rewritten, merged or validated afterwards, and scan stays fully scriptable (no prompting). The scan summary lists it only on the run that seeded it. The `/artisan-context` pack (artisan hub) fills the file — the CLI ships no wizard. Docs: `context.md` row in `files.md`, updated `scan` rows in `commands.md`/`workflow.md`, a mention in `index.md`, and the two new pack rows in `agent-packs.md`.
+
 ## 0.6.0 — 10.11.2026
 
 ### Added
